@@ -70,3 +70,30 @@ lib/
 ├── domain/
 ├── presentation/
 └── main.dart
+
+```
+
+## Pruebas
+
+La carpeta `test` debe reflejar la organización principal del código:
+
+```text
+test/
+├── core/
+├── data/
+├── domain/
+└── presentation/
+```
+
+## Alcance de TK-002
+
+Esta tarea establece únicamente la estructura inicial de Clean Architecture.
+
+Las siguientes configuraciones quedan fuera de su alcance:
+
+- Navegación.
+- Gestión de estado.
+- Configuración de entornos.
+- Cliente HTTP.
+- Persistencia local.
+- Funcionalidades de usuario.
