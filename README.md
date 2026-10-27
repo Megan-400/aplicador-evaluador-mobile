@@ -1,17 +1,52 @@
-# aplicador_evaluador_mobile
+# Aplicador/Evaluador de Exámenes - Cliente móvil
 
-A new Flutter project.
+Cliente móvil del Sistema Aplicador/Evaluador de Exámenes.
 
-## Getting Started
+## Tecnologías
 
-This project is a starting point for a Flutter application.
+- Flutter
+- Dart
 
-A few resources to get you started if this is your first Flutter project:
+## Requisitos
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter SDK
+- Dart SDK
+- Android Studio o IntelliJ IDEA
+- Git
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Instalación
+
+1. Clonar el repositorio.
+2. Entrar al directorio del proyecto.
+3. Obtener las dependencias:
+
+   flutter pub get
+
+4. Ejecutar las validaciones:
+
+   flutter analyze
+   flutter test
+
+5. Iniciar la aplicación:
+
+   flutter run
+
+## Ramas
+
+- `main`: versiones estables.
+- `develop`: integración del desarrollo.
+- `feature/*`: nuevas funcionalidades y tareas técnicas.
+- `fix/*`: correcciones de errores.
+- `docs/*`: documentación.
+
+## Arquitectura
+
+El proyecto utilizará Clean Architecture con las capas:
+
+- Presentation
+- Domain
+- Data
+
+## Estado del proyecto
+
+Configuración inicial en proceso.
