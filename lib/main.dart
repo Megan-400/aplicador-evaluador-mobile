@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
 
-import 'presentation/screens/design_system/design_system_preview_screen.dart';
+import 'presentation/navigation/student_app_shell.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      home: const DesignSystemPreviewScreen(),
+      home: const StudentAppShell(),
     );
   }
 }
