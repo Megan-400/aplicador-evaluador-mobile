@@ -8,11 +8,11 @@ void main() {
 
     expect(find.text('Inicio'), findsWidgets);
     expect(
-      find.text('Consulta tus actividades y accesos recientes.'),
+      find.text('Consulta tus actividades y accesos principales.'),
       findsOneWidget,
     );
-    expect(find.text('Exámenes'), findsOneWidget);
-    expect(find.text('Calificaciones'), findsOneWidget);
-    expect(find.text('Mis grupos'), findsOneWidget);
+    expect(find.text('Exámenes'), findsNWidgets(2));
+    expect(find.text('Calificaciones'), findsNWidgets(2));
+    expect(find.text('Mis grupos'), findsNWidgets(2));
   });
 }

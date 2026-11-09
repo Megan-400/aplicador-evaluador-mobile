@@ -20,6 +20,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Finder navigationDestination(String label) {
+    return find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text(label),
+    );
+  }
+
   testWidgets('muestra Inicio como destino inicial', (tester) async {
     await buildShell(tester);
 
@@ -28,8 +35,9 @@ void main() {
     );
 
     expect(navigationBar.selectedIndex, 0);
+    expect(find.text('Portal del alumno'), findsOneWidget);
     expect(
-      find.text('Consulta tus actividades y accesos recientes.'),
+      find.text('Consulta tus actividades y accesos principales.'),
       findsOneWidget,
     );
   });
@@ -37,7 +45,7 @@ void main() {
   testWidgets('permite navegar a Exámenes', (tester) async {
     await buildShell(tester);
 
-    await tester.tap(find.text('Exámenes'));
+    await tester.tap(navigationDestination('Exámenes'));
     await tester.pumpAndSettle();
 
     final navigationBar = tester.widget<NavigationBar>(
@@ -51,7 +59,7 @@ void main() {
   testWidgets('permite navegar a Calificaciones', (tester) async {
     await buildShell(tester);
 
-    await tester.tap(find.text('Calificaciones'));
+    await tester.tap(navigationDestination('Calificaciones'));
     await tester.pumpAndSettle();
 
     final navigationBar = tester.widget<NavigationBar>(
@@ -65,7 +73,7 @@ void main() {
   testWidgets('permite navegar a Mis grupos', (tester) async {
     await buildShell(tester);
 
-    await tester.tap(find.text('Mis grupos'));
+    await tester.tap(navigationDestination('Mis grupos'));
     await tester.pumpAndSettle();
 
     final navigationBar = tester.widget<NavigationBar>(
@@ -76,6 +84,28 @@ void main() {
     expect(find.text('Sin grupos asociados'), findsOneWidget);
   });
 
+  testWidgets('abre Exámenes desde el acceso rápido de Inicio', (tester) async {
+    await buildShell(tester);
+
+    final quickAccessText = find.text('Exámenes').first;
+    final quickAccessCard = find.ancestor(
+      of: quickAccessText,
+      matching: find.byType(InkWell),
+    );
+
+    expect(quickAccessCard, findsOneWidget);
+
+    await tester.tap(quickAccessCard);
+    await tester.pumpAndSettle();
+
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
+    );
+
+    expect(navigationBar.selectedIndex, 1);
+    expect(find.text('Sin exámenes cargados'), findsOneWidget);
+  });
+
   testWidgets('funciona con el tema oscuro', (tester) async {
     await buildShell(tester, themeMode: ThemeMode.dark);
 
@@ -84,8 +114,9 @@ void main() {
 
     expect(theme.brightness, Brightness.dark);
     expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Portal del alumno'), findsOneWidget);
     expect(
-      find.text('Consulta tus actividades y accesos recientes.'),
+      find.text('Consulta tus actividades y accesos principales.'),
       findsOneWidget,
     );
   });

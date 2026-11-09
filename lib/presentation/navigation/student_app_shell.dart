@@ -8,7 +8,6 @@ import '../screens/student/home/student_home_screen.dart';
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
 /// cambia de destino.
-
 class StudentAppShell extends StatefulWidget {
   const StudentAppShell({super.key});
 
@@ -19,15 +18,7 @@ class StudentAppShell extends StatefulWidget {
 class _StudentAppShellState extends State<StudentAppShell> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _destinations = [
-    StudentHomeScreen(),
-    StudentExamsScreen(),
-    StudentGradesScreen(),
-    StudentGroupsScreen(),
-  ];
-
   /// Cambia el destino seleccionado en la navegación inferior.
-
   void _selectDestination(int index) {
     if (index == _selectedIndex) {
       return;
@@ -40,8 +31,19 @@ class _StudentAppShellState extends State<StudentAppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final destinations = [
+      StudentHomeScreen(
+        onOpenExams: () => _selectDestination(1),
+        onOpenGrades: () => _selectDestination(2),
+        onOpenGroups: () => _selectDestination(3),
+      ),
+      const StudentExamsScreen(),
+      const StudentGradesScreen(),
+      const StudentGroupsScreen(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _destinations),
+      body: IndexedStack(index: _selectedIndex, children: destinations),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _selectDestination,
