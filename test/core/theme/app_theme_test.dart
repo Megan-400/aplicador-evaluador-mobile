@@ -30,6 +30,7 @@ void main() {
       expect(AppDimensions.inputHeight, 48);
       expect(AppDimensions.minimumTouchTarget, 48);
       expect(AppDimensions.answerOptionMinHeight, 56);
+      expect(AppDimensions.quickAccessCardHeight, 184);
     });
   });
 }
