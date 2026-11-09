@@ -4,4 +4,10 @@ class ApiConstants {
 
   static const login = '/auth/login';
   static const grupos = '/teacher/groups';
+  static const examenes = '/teacher/exams';
+
+  /// Alumnos inscritos en un grupo.
+  static String alumnosDeGrupo(int grupoId) {
+    return '/teacher/groups/$grupoId/students';
+  }
 }

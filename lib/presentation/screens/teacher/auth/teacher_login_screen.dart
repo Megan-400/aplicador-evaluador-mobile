@@ -1,15 +1,22 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/api_constants.dart';
-import '../../../../core/network/api_client.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../domain/entities/auth_session.dart';
+import '../../../../domain/repositories/auth_repository.dart';
 
 /// Pantalla de inicio de sesión del docente.
 class TeacherLoginScreen extends StatefulWidget {
-  const TeacherLoginScreen({super.key});
+  const TeacherLoginScreen({
+    super.key,
+    required this.authRepository,
+    required this.onLoggedIn,
+  });
+
+  final AuthRepository authRepository;
+  final ValueChanged<AuthSession> onLoggedIn;
 
   @override
   State<TeacherLoginScreen> createState() => _TeacherLoginScreenState();
@@ -35,38 +42,28 @@ class _TeacherLoginScreenState extends State<TeacherLoginScreen> {
     }
 
     setState(() => _cargando = true);
-    String mensaje;
 
     try {
-      final respuesta = await ApiClient.dio.post(
-        ApiConstants.login,
-        data: {
-          'email': _correoCtrl.text.trim(),
-          'password': _passCtrl.text,
-        },
+      final sesion = await widget.authRepository.login(
+        email: _correoCtrl.text.trim(),
+        password: _passCtrl.text,
       );
-      debugPrint('LOGIN ${respuesta.statusCode}');
-      mensaje = 'Conexión correcta.';
-    } on DioException catch (e) {
-      debugPrint('LOGIN ERROR ${e.response?.statusCode}: ${e.response?.data}');
-      mensaje = switch (e.response?.statusCode) {
-        401 || 422 => 'Correo o contraseña incorrectos.',
-        403 => 'Tu cuenta no está registrada como docente.',
-        429 => 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.',
-        503 => 'El servicio no está disponible. Inténtalo más tarde.',
-        null => 'No se pudo conectar. Revisa tu internet e inténtalo de nuevo.',
-        _ => 'No se pudo iniciar sesión. Inténtalo de nuevo.',
-      };
-    }
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    setState(() => _cargando = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje)),
-    );
+      widget.onLoggedIn(sesion);
+    } on AppException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
   }
 
   @override

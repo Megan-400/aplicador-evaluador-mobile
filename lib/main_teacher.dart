@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'presentation/navigation/teacher_root.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/screens/teacher/auth/teacher_login_screen.dart';
 
 void main() {
   runApp(const TeacherApp());
@@ -18,7 +17,7 @@ class TeacherApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      home: const TeacherLoginScreen(),
+      home: const TeacherRoot(),
     );
   }
 }
