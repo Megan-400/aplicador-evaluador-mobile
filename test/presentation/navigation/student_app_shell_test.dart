@@ -53,7 +53,7 @@ void main() {
     );
 
     expect(navigationBar.selectedIndex, 1);
-    expect(find.text('Sin exámenes cargados'), findsOneWidget);
+    expect(find.text('Sin exámenes disponibles'), findsOneWidget);
   });
 
   testWidgets('permite navegar a Calificaciones', (tester) async {
@@ -103,7 +103,7 @@ void main() {
     );
 
     expect(navigationBar.selectedIndex, 1);
-    expect(find.text('Sin exámenes cargados'), findsOneWidget);
+    expect(find.text('Sin exámenes disponibles'), findsOneWidget);
   });
 
   testWidgets('funciona con el tema oscuro', (tester) async {
