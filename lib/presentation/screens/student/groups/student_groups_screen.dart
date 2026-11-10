@@ -4,6 +4,8 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../domain/entities/student_group_summary.dart';
 import 'widgets/student_group_card.dart';
+import 'join/join_group_code.dart';
+import 'join/join_group_sheet.dart';
 
 /// Pantalla de consulta y filtrado de grupos del alumno.
 class StudentGroupsScreen extends StatefulWidget {
@@ -60,7 +62,7 @@ class _StudentGroupsScreenState extends State<StudentGroupsScreen> {
     });
   }
 
-  void _requestJoinGroup() {
+  Future<void> _requestJoinGroup() async {
     final callback = widget.onJoinGroup;
 
     if (callback != null) {
@@ -68,10 +70,22 @@ class _StudentGroupsScreenState extends State<StudentGroupsScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('La unión a grupos se implementará en HU-MOV-006.'),
-      ),
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return JoinGroupSheet(
+          onSubmit: (code) async {
+            return const JoinGroupResult(
+              status: JoinGroupResultStatus.connectionError,
+              message:
+                  'La conexión con el servicio de grupos todavía no está '
+                  'disponible.',
+            );
+          },
+        );
+      },
     );
   }
 
@@ -274,7 +288,8 @@ class _EmptyGroupsState extends StatelessWidget {
     return const _GroupMessageCard(
       icon: Icons.groups_outlined,
       title: 'Sin grupos asociados',
-      description: 'Los grupos a los que te unas aparecerán en esta sección.',
+      description:
+          'Los grupos a los que te unas aparecerán en esta sección.',
     );
   }
 }
