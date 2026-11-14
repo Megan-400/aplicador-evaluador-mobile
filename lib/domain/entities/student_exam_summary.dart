@@ -12,6 +12,7 @@ class StudentExamSummary {
     required this.questionCount,
     this.availableAt,
     this.dueAt,
+    this.instructions = const [],
   });
 
   final String id;
@@ -22,4 +23,5 @@ class StudentExamSummary {
   final int questionCount;
   final DateTime? availableAt;
   final DateTime? dueAt;
+  final List<String> instructions;
 }

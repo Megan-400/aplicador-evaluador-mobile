@@ -4,15 +4,19 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../domain/entities/student_exam_summary.dart';
 import 'widgets/student_exam_card.dart';
+import 'detail/student_exam_detail_screen.dart';
 
 /// Pantalla de consulta y filtrado de exámenes del alumno.
 class StudentExamsScreen extends StatefulWidget {
-  const StudentExamsScreen({this.exams = const [], super.key});
+  const StudentExamsScreen({this.exams = const [], this.onOpenExam, super.key});
 
   final List<StudentExamSummary> exams;
+  final ValueChanged<StudentExamSummary>? onOpenExam;
 
   @override
-  State<StudentExamsScreen> createState() => _StudentExamsScreenState();
+  State<StudentExamsScreen> createState() {
+    return _StudentExamsScreenState();
+  }
 }
 
 class _StudentExamsScreenState extends State<StudentExamsScreen> {
@@ -134,7 +138,30 @@ class _StudentExamsScreenState extends State<StudentExamsScreen> {
     return Column(
       children: [
         for (var index = 0; index < filteredExams.length; index++) ...[
-          StudentExamCard(exam: filteredExams[index], onPressed: () {}),
+          StudentExamCard(
+            exam: filteredExams[index],
+            onPressed: () {
+              final callback = widget.onOpenExam;
+
+              if (callback != null) {
+                callback(filteredExams[index]);
+                return;
+              }
+
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) {
+                    return StudentExamDetailScreen(
+                      exam: filteredExams[index],
+                      onStartExam: (_) async {
+                        return false;
+                      },
+                    );
+                  },
+                ),
+              );
+            },
+          ),
           if (index < filteredExams.length - 1)
             const SizedBox(height: AppSpacing.md),
         ],
