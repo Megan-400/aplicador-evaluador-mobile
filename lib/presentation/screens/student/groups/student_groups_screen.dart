@@ -288,8 +288,7 @@ class _EmptyGroupsState extends StatelessWidget {
     return const _GroupMessageCard(
       icon: Icons.groups_outlined,
       title: 'Sin grupos asociados',
-      description:
-          'Los grupos a los que te unas aparecerán en esta sección.',
+      description: 'Los grupos a los que te unas aparecerán en esta sección.',
     );
   }
 }

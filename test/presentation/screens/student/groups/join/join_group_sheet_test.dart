@@ -38,7 +38,9 @@ void main() {
     expect(find.text('Continuar'), findsOneWidget);
   });
 
-  testWidgets('muestra error con un código incompleto', (tester) async {
+  testWidgets('mantiene Continuar desactivado con un código incompleto', (
+    tester,
+  ) async {
     await buildSheet(
       tester,
       onSubmit: (_) async {
@@ -49,14 +51,44 @@ void main() {
       },
     );
 
-    await tester.enterText(
-      find.byKey(const Key('join-group-code-field')),
-      'ABC',
-    );
-    await tester.tap(find.byKey(const Key('join-group-submit-button')));
+    final fieldFinder = find.byKey(const Key('join-group-code-field'));
+    final buttonFinder = find.byKey(const Key('join-group-submit-button'));
+
+    var button = tester.widget<ElevatedButton>(buttonFinder);
+
+    expect(button.onPressed, isNull);
+
+    await tester.enterText(fieldFinder, 'ABC');
     await tester.pumpAndSettle();
 
-    expect(find.text('El código debe contener 6 caracteres.'), findsOneWidget);
+    button = tester.widget<ElevatedButton>(buttonFinder);
+
+    expect(button.onPressed, isNull);
+    expect(find.text('Confirmar código'), findsNothing);
+  });
+
+  testWidgets('habilita Continuar cuando el código es válido', (tester) async {
+    await buildSheet(
+      tester,
+      onSubmit: (_) async {
+        return const JoinGroupResult(
+          status: JoinGroupResultStatus.success,
+          message: 'Correcto.',
+        );
+      },
+    );
+
+    final fieldFinder = find.byKey(const Key('join-group-code-field'));
+    final buttonFinder = find.byKey(const Key('join-group-submit-button'));
+
+    await tester.enterText(fieldFinder, 'abc123');
+    await tester.pumpAndSettle();
+
+    final textField = tester.widget<TextFormField>(fieldFinder);
+    final button = tester.widget<ElevatedButton>(buttonFinder);
+
+    expect(textField.controller?.text, 'ABC123');
+    expect(button.onPressed, isNotNull);
   });
 
   testWidgets('normaliza el código antes del envío', (tester) async {
@@ -74,20 +106,36 @@ void main() {
       },
     );
 
-    await tester.enterText(
-      find.byKey(const Key('join-group-code-field')),
-      'abc123',
-    );
-    await tester.tap(find.byKey(const Key('join-group-submit-button')));
+    final fieldFinder = find.byKey(const Key('join-group-code-field'));
+    final buttonFinder = find.byKey(const Key('join-group-submit-button'));
+
+    await tester.enterText(fieldFinder, 'abc123');
+    await tester.pumpAndSettle();
+
+    final textField = tester.widget<TextFormField>(fieldFinder);
+    final button = tester.widget<ElevatedButton>(buttonFinder);
+
+    expect(textField.controller?.text, 'ABC123');
+    expect(button.onPressed, isNotNull);
+
+    await tester.tap(buttonFinder);
     await tester.pumpAndSettle();
 
     expect(find.text('Confirmar código'), findsOneWidget);
+    expect(
+      find.text(
+        '¿Deseas solicitar tu incorporación al grupo con el código '
+        'ABC123?',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Confirmar'));
     await tester.pumpAndSettle();
 
     expect(submittedCode, 'ABC123');
     expect(find.text('Solicitud completada'), findsOneWidget);
+    expect(find.text('Te uniste correctamente.'), findsOneWidget);
   });
 
   testWidgets('muestra un error devuelto por el servicio', (tester) async {
@@ -101,12 +149,20 @@ void main() {
       },
     );
 
-    await tester.enterText(
-      find.byKey(const Key('join-group-code-field')),
-      'XYZ789',
-    );
-    await tester.tap(find.byKey(const Key('join-group-submit-button')));
+    final fieldFinder = find.byKey(const Key('join-group-code-field'));
+    final buttonFinder = find.byKey(const Key('join-group-submit-button'));
+
+    await tester.enterText(fieldFinder, 'XYZ789');
     await tester.pumpAndSettle();
+
+    final button = tester.widget<ElevatedButton>(buttonFinder);
+
+    expect(button.onPressed, isNotNull);
+
+    await tester.tap(buttonFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirmar código'), findsOneWidget);
 
     await tester.tap(find.text('Confirmar'));
     await tester.pumpAndSettle();

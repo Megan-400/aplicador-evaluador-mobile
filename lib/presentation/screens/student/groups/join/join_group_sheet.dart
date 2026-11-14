@@ -22,6 +22,7 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
   final TextEditingController _codeController = TextEditingController();
 
   bool _isSubmitting = false;
+  bool _isCodeValid = false;
   JoinGroupResult? _result;
 
   @override
@@ -95,15 +96,21 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
 
   void _normalizeCode(String value) {
     final normalized = JoinGroupCode.normalize(value);
+    final isValid = JoinGroupCode.isValid(normalized);
 
-    if (normalized == value) {
-      return;
+    if (normalized != value) {
+      _codeController.value = TextEditingValue(
+        text: normalized,
+        selection: TextSelection.collapsed(offset: normalized.length),
+      );
     }
 
-    _codeController.value = TextEditingValue(
-      text: normalized,
-      selection: TextSelection.collapsed(offset: normalized.length),
-    );
+    if (_isCodeValid != isValid || _result != null) {
+      setState(() {
+        _isCodeValid = isValid;
+        _result = null;
+      });
+    }
   }
 
   @override
@@ -163,7 +170,7 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
                   validator: JoinGroupCode.validate,
                   onChanged: _normalizeCode,
                   onFieldSubmitted: (_) {
-                    if (!_isSubmitting) {
+                    if (!_isSubmitting && _isCodeValid) {
                       _continue();
                     }
                   },
@@ -175,7 +182,7 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
                 const SizedBox(height: AppSpacing.lg),
                 ElevatedButton(
                   key: const Key('join-group-submit-button'),
-                  onPressed: _isSubmitting ? null : _continue,
+                  onPressed: _isSubmitting || !_isCodeValid ? null : _continue,
                   child: _isSubmitting
                       ? const SizedBox(
                           width: AppDimensions.iconMedium,
