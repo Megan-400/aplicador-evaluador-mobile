@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../navigation/student_app_shell.dart';
 import '../../../state/student_dashboard_controller.dart';
 import 'student_access_code.dart';
 
@@ -143,6 +142,10 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
       });
     }
 
+    if (!success) {
+      return;
+    }
+
     if (!mounted || !success) {
       return;
     }
@@ -152,14 +155,6 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
     if (dashboard == null) {
       return;
     }
-
-    await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (context) {
-          return StudentAppShell(dashboard: dashboard);
-        },
-      ),
-    );
   }
 
   @override

@@ -6,6 +6,7 @@ import 'data/repositories/student_dashboard_repository_impl.dart';
 import 'domain/usecases/load_student_dashboard.dart';
 import 'presentation/screens/student/access/student_access_screen.dart';
 import 'presentation/state/student_dashboard_controller.dart';
+import 'presentation/navigation/student_app_shell.dart';
 
 void main() {
   runApp(const MyApp());
@@ -52,7 +53,21 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      home: StudentAccessScreen(controller: _controller),
+      home: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final dashboard = _controller.dashboard;
+
+          if (dashboard == null) {
+            return StudentAccessScreen(controller: _controller);
+          }
+
+          return StudentAppShell(
+            dashboard: dashboard,
+            onSignOut: _controller.signOut,
+          );
+        },
+      ),
     );
   }
 }

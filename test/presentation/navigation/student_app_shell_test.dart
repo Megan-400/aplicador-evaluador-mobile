@@ -15,7 +15,10 @@ void main() {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
-        home: const StudentAppShell(dashboard: emptyStudentDashboard),
+        home: StudentAppShell(
+          dashboard: emptyStudentDashboard,
+          onSignOut: () {},
+        ),
       ),
     );
 
@@ -121,5 +124,69 @@ void main() {
       find.text('Consulta tus actividades y accesos principales.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('confirma el cierre de sesión del alumno', (tester) async {
+    var signedOut = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: StudentAppShell(
+          dashboard: emptyStudentDashboard,
+          onSignOut: () {
+            signedOut = true;
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Perfil'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('student-sign-out-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cerrar sesión'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('confirm-student-sign-out-button')));
+    await tester.pumpAndSettle();
+
+    expect(signedOut, isTrue);
+  });
+
+  testWidgets('confirma el cierre de sesión del alumno', (tester) async {
+    var signedOut = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: StudentAppShell(
+          dashboard: emptyStudentDashboard,
+          onSignOut: () {
+            signedOut = true;
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Perfil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mi perfil'), findsOneWidget);
+    expect(find.byTooltip('Atrás'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('student-sign-out-button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('confirm-student-sign-out-button')));
+    await tester.pumpAndSettle();
+
+    expect(signedOut, isTrue);
+    expect(find.text('Mi perfil'), findsNothing);
   });
 }
