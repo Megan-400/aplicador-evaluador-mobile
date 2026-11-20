@@ -4,12 +4,15 @@ import '../screens/student/exams/student_exams_screen.dart';
 import '../screens/student/grades/student_grades_screen.dart';
 import '../screens/student/groups/student_groups_screen.dart';
 import '../screens/student/home/student_home_screen.dart';
+import '../../domain/entities/student_dashboard.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
 /// cambia de destino.
 class StudentAppShell extends StatefulWidget {
-  const StudentAppShell({super.key});
+  const StudentAppShell({required this.dashboard, super.key});
+
+  final StudentDashboard dashboard;
 
   @override
   State<StudentAppShell> createState() => _StudentAppShellState();
@@ -37,9 +40,9 @@ class _StudentAppShellState extends State<StudentAppShell> {
         onOpenGrades: () => _selectDestination(2),
         onOpenGroups: () => _selectDestination(3),
       ),
-      const StudentExamsScreen(),
-      const StudentGradesScreen(),
-      const StudentGroupsScreen(),
+      StudentExamsScreen(exams: widget.dashboard.exams),
+      StudentGradesScreen(grades: widget.dashboard.grades),
+      StudentGroupsScreen(groups: widget.dashboard.groups),
     ];
 
     return Scaffold(

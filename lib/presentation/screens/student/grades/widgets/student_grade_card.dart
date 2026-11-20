@@ -20,7 +20,7 @@ class StudentGradeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final resultColor = _resultColor;
+    final resultColor = _resultColor(context);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -86,10 +86,14 @@ class StudentGradeCard extends StatelessWidget {
     );
   }
 
-  Color get _resultColor {
+  Color _resultColor(BuildContext context) {
     return switch (grade.result) {
       StudentGradeResult.passed => AppColors.success,
       StudentGradeResult.notPassed => AppColors.error,
+      StudentGradeResult.pending => AppColors.warning,
+      StudentGradeResult.hidden => Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant,
     };
   }
 
@@ -97,6 +101,8 @@ class StudentGradeCard extends StatelessWidget {
     return switch (grade.result) {
       StudentGradeResult.passed => Icons.check_circle_outline,
       StudentGradeResult.notPassed => Icons.cancel_outlined,
+      StudentGradeResult.pending => Icons.hourglass_empty,
+      StudentGradeResult.hidden => Icons.visibility_off_outlined,
     };
   }
 }
@@ -143,11 +149,17 @@ class _GradeResultBadge extends StatelessWidget {
     final color = switch (result) {
       StudentGradeResult.passed => AppColors.success,
       StudentGradeResult.notPassed => AppColors.error,
+      StudentGradeResult.pending => AppColors.warning,
+      StudentGradeResult.hidden => Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant,
     };
 
     final label = switch (result) {
       StudentGradeResult.passed => 'Aprobado',
       StudentGradeResult.notPassed => 'No aprobado',
+      StudentGradeResult.pending => 'En revisión',
+      StudentGradeResult.hidden => 'Sin publicar',
     };
 
     return Container(

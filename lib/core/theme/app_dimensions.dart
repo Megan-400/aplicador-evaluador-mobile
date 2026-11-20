@@ -10,4 +10,5 @@ abstract final class AppDimensions {
   static const double iconMedium = 24;
   static const double iconLarge = 32;
   static const double appBarHeight = 56;
+  static const double accessLogoSize = 72;
 }
