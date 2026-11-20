@@ -20,6 +20,8 @@ void main() {
           onOpenExams: onOpenExams ?? () {},
           onOpenGrades: onOpenGrades ?? () {},
           onOpenGroups: onOpenGroups ?? () {},
+          onOpenProfile: () {},
+          studentName: 'Alumno de prueba',
         ),
       ),
     );
@@ -30,7 +32,7 @@ void main() {
   testWidgets('muestra el contenido principal de Inicio', (tester) async {
     await buildHome(tester);
 
-    expect(find.text('Inicio'), findsOneWidget);
+    expect(find.text('Hola, Alumno de prueba'), findsOneWidget);
     expect(find.text('Portal del alumno'), findsOneWidget);
     expect(find.text('Accesos principales'), findsOneWidget);
 
@@ -106,5 +108,33 @@ void main() {
 
     expect(Theme.of(context).brightness, Brightness.dark);
     expect(find.text('Portal del alumno'), findsOneWidget);
+  });
+
+  testWidgets('ejecuta la acción para abrir el perfil', (tester) async {
+    var wasCalled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: StudentHomeScreen(
+            onOpenExams: () {},
+            onOpenGrades: () {},
+            onOpenGroups: () {},
+            onOpenProfile: () {
+              wasCalled = true;
+            },
+            studentName: 'Alumno de prueba',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Perfil'));
+    await tester.pump();
+
+    expect(wasCalled, isTrue);
   });
 }

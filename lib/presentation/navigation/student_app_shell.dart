@@ -5,14 +5,20 @@ import '../screens/student/grades/student_grades_screen.dart';
 import '../screens/student/groups/student_groups_screen.dart';
 import '../screens/student/home/student_home_screen.dart';
 import '../../domain/entities/student_dashboard.dart';
+import '../screens/student/profile/student_profile_screen.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
 /// cambia de destino.
 class StudentAppShell extends StatefulWidget {
-  const StudentAppShell({required this.dashboard, super.key});
+  const StudentAppShell({
+    required this.dashboard,
+    required this.onSignOut,
+    super.key,
+  });
 
   final StudentDashboard dashboard;
+  final VoidCallback onSignOut;
 
   @override
   State<StudentAppShell> createState() => _StudentAppShellState();
@@ -32,6 +38,59 @@ class _StudentAppShellState extends State<StudentAppShell> {
     });
   }
 
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return StudentProfileScreen(
+            dashboard: widget.dashboard,
+            onSignOut: _requestSignOut,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _requestSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text(
+            'Tendrás que ingresar nuevamente tu folio y '
+            'código personal para acceder.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              key: const Key('confirm-student-sign-out-button'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+
+    navigator.popUntil((route) => route.isFirst);
+
+    widget.onSignOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     final destinations = [
@@ -39,6 +98,8 @@ class _StudentAppShellState extends State<StudentAppShell> {
         onOpenExams: () => _selectDestination(1),
         onOpenGrades: () => _selectDestination(2),
         onOpenGroups: () => _selectDestination(3),
+        onOpenProfile: _openProfile,
+        studentName: widget.dashboard.student.name,
       ),
       StudentExamsScreen(exams: widget.dashboard.exams),
       StudentGradesScreen(grades: widget.dashboard.grades),

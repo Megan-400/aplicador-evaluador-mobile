@@ -5,17 +5,22 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 
 /// Pantalla inicial del portal móvil del alumno.
+/// Pantalla inicial del portal móvil del alumno.
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({
     required this.onOpenExams,
     required this.onOpenGrades,
     required this.onOpenGroups,
+    required this.onOpenProfile,
+    required this.studentName,
     super.key,
   });
 
   final VoidCallback onOpenExams;
   final VoidCallback onOpenGrades;
   final VoidCallback onOpenGroups;
+  final VoidCallback onOpenProfile;
+  final String studentName;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,11 @@ class StudentHomeScreen extends StatelessWidget {
         key: const PageStorageKey<String>('student-home'),
         padding: const EdgeInsets.all(AppSpacing.mobileHorizontal),
         children: [
-          _HomeHeader(theme: theme),
+          _HomeHeader(
+            theme: theme,
+            studentName: studentName,
+            onOpenProfile: onOpenProfile,
+          ),
           const SizedBox(height: AppSpacing.lg),
           _WelcomeCard(colors: colors),
           const SizedBox(height: AppSpacing.lg),
@@ -54,9 +63,15 @@ class StudentHomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.theme});
+  const _HomeHeader({
+    required this.theme,
+    required this.studentName,
+    required this.onOpenProfile,
+  });
 
   final ThemeData theme;
+  final String studentName;
+  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +81,7 @@ class _HomeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Inicio', style: theme.textTheme.headlineSmall),
+              Text('Hola, $studentName', style: theme.textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Consulta tus actividades y accesos principales.',
@@ -79,7 +94,7 @@ class _HomeHeader extends StatelessWidget {
           label: 'Perfil del alumno',
           button: true,
           child: IconButton(
-            onPressed: () {},
+            onPressed: onOpenProfile,
             tooltip: 'Perfil',
             icon: const Icon(Icons.person_outline),
           ),
