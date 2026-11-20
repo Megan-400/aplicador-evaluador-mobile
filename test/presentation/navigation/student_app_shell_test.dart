@@ -3,6 +3,8 @@ import 'package:aplicador_evaluador_mobile/presentation/navigation/student_app_s
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/fixtures/student_dashboard_fixture.dart';
+
 void main() {
   Future<void> buildShell(
     WidgetTester tester, {
@@ -13,7 +15,7 @@ void main() {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
-        home: const StudentAppShell(),
+        home: const StudentAppShell(dashboard: emptyStudentDashboard),
       ),
     );
 

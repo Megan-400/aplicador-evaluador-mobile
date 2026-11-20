@@ -1,5 +1,5 @@
 /// Clasificación visible del resultado de una evaluación.
-enum StudentGradeResult { passed, notPassed }
+enum StudentGradeResult { passed, notPassed, pending, hidden }
 
 /// Información resumida de una calificación publicada.
 class StudentGradeSummary {

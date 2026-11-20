@@ -17,6 +17,7 @@ void main() {
       subject: 'Matemáticas',
       period: '2026-B',
       status: StudentGroupStatus.active,
+      folioCode: 'FOLIO123',
       teacherName: 'Docente de prueba',
     ),
     StudentGroupSummary(
@@ -25,6 +26,7 @@ void main() {
       subject: 'Programación',
       period: '2026-A',
       status: StudentGroupStatus.completed,
+      folioCode: 'FOLIO456',
     ),
   ];
 

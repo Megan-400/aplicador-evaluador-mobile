@@ -9,6 +9,7 @@ class StudentGroupSummary {
     required this.subject,
     required this.period,
     required this.status,
+    required this.folioCode,
     this.teacherName,
   });
 
@@ -17,5 +18,6 @@ class StudentGroupSummary {
   final String subject;
   final String period;
   final StudentGroupStatus status;
+  final String folioCode;
   final String? teacherName;
 }
