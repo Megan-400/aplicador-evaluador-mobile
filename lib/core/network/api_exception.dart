@@ -7,10 +7,10 @@ enum ApiFailureType {
   serviceUnavailable,
   connection,
   invalidResponse,
-  invalidGrant,
-  expiredGrant,
   examUnavailable,
   requestFailed,
+  attemptClosed,
+  migrationRequired,
 }
 
 /// Error controlado producido al consumir la API.

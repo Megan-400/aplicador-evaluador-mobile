@@ -3,51 +3,113 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('StudentExamAttemptModel', () {
-    test('convierte una respuesta válida', () {
+    test('convierte un intento nuevo', () {
       final attempt = StudentExamAttemptModel.fromJson({
         'data': {
-          'intento_id': 25,
-          'token_sesion': '3e58ddc7-1e5a-42d9-a476-d31ab63293e5',
-          'fecha_inicio': '2026-11-20T17:30:00-06:00',
+          'examen_id': 25,
+          'intento_id': 123,
+          'token_sesion': 'token-sintetico-de-prueba',
+          'fecha_inicio':
+              '2026-11-20T18:30:00-06:00',
+          'reanudado': false,
         },
       });
 
-      expect(attempt.id, 25);
+      expect(attempt.id, 123);
+      expect(attempt.examId, 25);
       expect(attempt.sessionToken, isNotEmpty);
       expect(attempt.startedAt.year, 2026);
+      expect(attempt.wasResumed, isFalse);
     });
 
-    test('acepta un identificador representado como texto', () {
+    test('convierte un intento reanudado', () {
       final attempt = StudentExamAttemptModel.fromJson({
         'data': {
-          'intento_id': '25',
-          'token_sesion': '3e58ddc7-1e5a-42d9-a476-d31ab63293e5',
-          'fecha_inicio': '2026-11-20T17:30:00-06:00',
+          'examen_id': 25,
+          'intento_id': 123,
+          'token_sesion': 'token-sintetico-de-prueba',
+          'fecha_inicio':
+              '2026-11-20T18:30:00-06:00',
+          'reanudado': true,
         },
       });
 
-      expect(attempt.id, 25);
+      expect(attempt.id, 123);
+      expect(attempt.examId, 25);
+      expect(attempt.wasResumed, isTrue);
     });
 
-    test('rechaza una respuesta sin token de sesión', () {
+    test('acepta identificadores representados como texto', () {
+      final attempt = StudentExamAttemptModel.fromJson({
+        'data': {
+          'examen_id': '25',
+          'intento_id': '123',
+          'token_sesion': 'token-sintetico-de-prueba',
+          'fecha_inicio':
+              '2026-11-20T18:30:00-06:00',
+          'reanudado': false,
+        },
+      });
+
+      expect(attempt.id, 123);
+      expect(attempt.examId, 25);
+    });
+
+    test('rechaza una respuesta sin token', () {
       expect(
         () => StudentExamAttemptModel.fromJson({
           'data': {
-            'intento_id': 25,
-            'fecha_inicio': '2026-11-20T17:30:00-06:00',
+            'examen_id': 25,
+            'intento_id': 123,
+            'fecha_inicio':
+                '2026-11-20T18:30:00-06:00',
+            'reanudado': false,
           },
         }),
         throwsA(isA<FormatException>()),
       );
     });
 
-    test('rechaza una fecha de inicio inválida', () {
+    test('rechaza una fecha inválida', () {
       expect(
         () => StudentExamAttemptModel.fromJson({
           'data': {
-            'intento_id': 25,
-            'token_sesion': 'token-de-prueba',
+            'examen_id': 25,
+            'intento_id': 123,
+            'token_sesion': 'token-sintetico-de-prueba',
             'fecha_inicio': 'fecha-invalida',
+            'reanudado': false,
+          },
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rechaza una respuesta sin reanudado', () {
+      expect(
+        () => StudentExamAttemptModel.fromJson({
+          'data': {
+            'examen_id': 25,
+            'intento_id': 123,
+            'token_sesion': 'token-sintetico-de-prueba',
+            'fecha_inicio':
+                '2026-11-20T18:30:00-06:00',
+          },
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rechaza un identificador de examen inválido', () {
+      expect(
+        () => StudentExamAttemptModel.fromJson({
+          'data': {
+            'examen_id': 0,
+            'intento_id': 123,
+            'token_sesion': 'token-sintetico-de-prueba',
+            'fecha_inicio':
+                '2026-11-20T18:30:00-06:00',
+            'reanudado': false,
           },
         }),
         throwsA(isA<FormatException>()),

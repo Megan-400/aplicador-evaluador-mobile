@@ -6,6 +6,10 @@ import '../screens/student/groups/student_groups_screen.dart';
 import '../screens/student/home/student_home_screen.dart';
 import '../../domain/entities/student_dashboard.dart';
 import '../screens/student/profile/student_profile_screen.dart';
+import '../../domain/entities/student_exam_summary.dart';
+import '../../domain/entities/student_session_credentials.dart';
+import '../screens/student/exams/detail/student_exam_detail_screen.dart';
+import '../state/attempts/start_exam_attempt_controller.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
@@ -13,11 +17,15 @@ import '../screens/student/profile/student_profile_screen.dart';
 class StudentAppShell extends StatefulWidget {
   const StudentAppShell({
     required this.dashboard,
+    required this.credentials,
+    required this.startAttemptController,
     required this.onSignOut,
     super.key,
   });
 
   final StudentDashboard dashboard;
+  final StudentSessionCredentials credentials;
+  final StartExamAttemptController startAttemptController;
   final VoidCallback onSignOut;
 
   @override
@@ -101,7 +109,10 @@ class _StudentAppShellState extends State<StudentAppShell> {
         onOpenProfile: _openProfile,
         studentName: widget.dashboard.student.name,
       ),
-      StudentExamsScreen(exams: widget.dashboard.exams),
+      StudentExamsScreen(
+        exams: widget.dashboard.exams,
+        onOpenExam: _openExamDetail,
+      ),
       StudentGradesScreen(grades: widget.dashboard.grades),
       StudentGroupsScreen(groups: widget.dashboard.groups),
     ];
@@ -133,6 +144,31 @@ class _StudentAppShellState extends State<StudentAppShell> {
             label: 'Mis grupos',
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openExamDetail(StudentExamSummary exam) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return StudentExamDetailScreen(
+            exam: exam,
+            onStartExam: (_) async {
+              final examId = int.tryParse(exam.id);
+
+              if (examId == null) {
+                return false;
+              }
+
+              return widget.startAttemptController.start(
+                folio: widget.credentials.folio,
+                accessCode: widget.credentials.accessCode,
+                examId: examId,
+              );
+            },
+          );
+        },
       ),
     );
   }

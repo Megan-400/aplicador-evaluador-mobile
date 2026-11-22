@@ -22,7 +22,11 @@ class StartExamAttemptController extends ChangeNotifier {
 
   bool get isLoading => _status == StartExamAttemptStatus.loading;
 
-  Future<bool> start({required String grant}) async {
+  Future<bool> start({
+    required String folio,
+    required String accessCode,
+    required int examId,
+  }) async {
     if (isLoading) {
       return false;
     }
@@ -33,7 +37,11 @@ class StartExamAttemptController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _attempt = await startAttempt(grant: grant);
+      _attempt = await startAttempt(
+        folio: folio,
+        accessCode: accessCode,
+        examId: examId,
+      );
 
       _status = StartExamAttemptStatus.success;
       notifyListeners();

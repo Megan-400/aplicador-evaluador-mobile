@@ -4,12 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fixtures/student_dashboard_fixture.dart';
+import '../../support/fixtures/student_attempt_fixture.dart';
 
 void main() {
   Future<void> buildShell(
     WidgetTester tester, {
     ThemeMode themeMode = ThemeMode.light,
   }) async {
+    final startAttemptController =
+        buildTestStartAttemptController();
+
+    addTearDown(startAttemptController.dispose);
+
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
@@ -17,6 +23,8 @@ void main() {
         themeMode: themeMode,
         home: StudentAppShell(
           dashboard: emptyStudentDashboard,
+          credentials: testStudentCredentials,
+          startAttemptController: startAttemptController,
           onSignOut: () {},
         ),
       ),
@@ -133,11 +141,14 @@ void main() {
       MaterialApp(
         theme: AppTheme.light,
         home: StudentAppShell(
-          dashboard: emptyStudentDashboard,
-          onSignOut: () {
-            signedOut = true;
-          },
-        ),
+                dashboard: emptyStudentDashboard,
+                credentials: testStudentCredentials,
+                startAttemptController:
+                    buildTestStartAttemptController(),
+                onSignOut: () {
+                  signedOut = true;
+                },
+              ),
       ),
     );
 
@@ -164,11 +175,14 @@ void main() {
       MaterialApp(
         theme: AppTheme.light,
         home: StudentAppShell(
-          dashboard: emptyStudentDashboard,
-          onSignOut: () {
-            signedOut = true;
-          },
-        ),
+                dashboard: emptyStudentDashboard,
+                credentials: testStudentCredentials,
+                startAttemptController:
+                    buildTestStartAttemptController(),
+                onSignOut: () {
+                  signedOut = true;
+                },
+              ),
       ),
     );
 

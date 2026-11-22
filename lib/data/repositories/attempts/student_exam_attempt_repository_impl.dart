@@ -8,7 +8,15 @@ class StudentExamAttemptRepositoryImpl implements StudentExamAttemptRepository {
   final StudentExamAttemptRemoteDataSource remoteDataSource;
 
   @override
-  Future<StudentExamAttempt> start({required String grant}) {
-    return remoteDataSource.start(grant: grant);
+  Future<StudentExamAttempt> start({
+    required String folio,
+    required String accessCode,
+    required int examId,
+  }) {
+    return remoteDataSource.start(
+      folio: folio,
+      accessCode: accessCode,
+      examId: examId,
+    );
   }
 }

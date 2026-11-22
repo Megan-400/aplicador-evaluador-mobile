@@ -1,17 +1,20 @@
-/// Intento creado por el backend para resolver un examen.
+/// Intento creado o reanudado por el backend.
 class StudentExamAttempt {
   const StudentExamAttempt({
     required this.id,
+    required this.examId,
     required this.sessionToken,
     required this.startedAt,
+    required this.wasResumed,
   });
 
   final int id;
+  final int examId;
 
-  /// Credencial asociada exclusivamente al intento.
-  /// No debe imprimirse, mostrarse en la interfaz ni enviarse a analíticas.
+  /// Credencial exclusiva del intento.
+  /// No debe mostrarse, registrarse ni enviarse a analíticas.
   final String sessionToken;
 
-  /// Fecha de inicio oficial proporcionada por el servidor.
   final DateTime startedAt;
+  final bool wasResumed;
 }
