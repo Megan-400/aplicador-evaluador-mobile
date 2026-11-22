@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/network/api_exception.dart';
 import '../../domain/entities/student_dashboard.dart';
+import '../../domain/entities/student_session_credentials.dart';
 import '../../domain/usecases/load_student_dashboard.dart';
 
 enum StudentDashboardStatus { initial, loading, success, failure }
@@ -21,6 +22,10 @@ class StudentDashboardController extends ChangeNotifier {
 
   bool get isLoading => _status == StudentDashboardStatus.loading;
 
+  StudentSessionCredentials? _credentials;
+
+  StudentSessionCredentials? get credentials => _credentials;
+
   Future<bool> signIn({
     required String folio,
     required String accessCode,
@@ -31,6 +36,11 @@ class StudentDashboardController extends ChangeNotifier {
 
     try {
       _dashboard = await loadDashboard(folio: folio, accessCode: accessCode);
+
+      _credentials = StudentSessionCredentials(
+        folio: folio.trim().toUpperCase(),
+        accessCode: accessCode.trim().toUpperCase(),
+      );
 
       _status = StudentDashboardStatus.success;
       notifyListeners();
@@ -51,6 +61,7 @@ class StudentDashboardController extends ChangeNotifier {
   }
 
   void signOut() {
+    _credentials = null;
     _dashboard = null;
     _errorMessage = null;
     _status = StudentDashboardStatus.initial;
