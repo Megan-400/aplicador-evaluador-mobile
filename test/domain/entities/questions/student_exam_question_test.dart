@@ -1,6 +1,7 @@
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_question.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_matching_pair.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_question_type.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_question_option.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -34,9 +35,12 @@ void main() {
         prompt: '¿Cuál es la definición de variable?',
         timeSeconds: 90,
         options: [
-          'Un valor que puede cambiar',
-          'Un ciclo de repetición',
-          'Una condición lógica',
+          StudentQuestionOption(
+            value: 'A',
+            label: 'Un valor que puede cambiar',
+          ),
+          StudentQuestionOption(value: 'B', label: 'Un ciclo de repetición'),
+          StudentQuestionOption(value: 'C', label: 'Una condición lógica'),
         ],
       );
 
@@ -45,7 +49,8 @@ void main() {
       expect(question.isMatching, isFalse);
       expect(question.isProgramming, isFalse);
       expect(question.options, hasLength(3));
-      expect(question.options.first, 'Un valor que puede cambiar');
+      expect(question.options.first.value, 'A');
+      expect(question.options.first.label, 'Un valor que puede cambiar');
       expect(question.matchingPairs, isEmpty);
       expect(question.timeMinutes, 2);
     });

@@ -12,9 +12,9 @@ import 'widgets/matching_question_field.dart';
 import 'widgets/multiple_choice_question.dart';
 import 'widgets/open_question_field.dart';
 import 'widgets/programming_question_field.dart';
+import '../../../state/answers/save_answers_controller.dart';
 
 /// Presenta las preguntas asociadas con un intento activo.
-///
 /// Las respuestas se conservan únicamente en memoria. El guardado remoto
 /// se implementará posteriormente en HU-MOV-012.
 class StudentExamAttemptScreen extends StatefulWidget {
@@ -22,12 +22,14 @@ class StudentExamAttemptScreen extends StatefulWidget {
     required this.exam,
     required this.attempt,
     required this.questionsController,
+    required this.saveAnswersController,
     super.key,
   });
 
   final StudentExamSummary exam;
   final StudentExamAttempt attempt;
   final ExamQuestionsController questionsController;
+  final SaveAnswersController saveAnswersController;
 
   @override
   State<StudentExamAttemptScreen> createState() {
@@ -45,11 +47,15 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQuestions();
     });
+
+    widget.saveAnswersController.addListener(_handleControllerChange);
   }
 
   @override
   void dispose() {
     widget.questionsController.removeListener(_handleControllerChange);
+
+    widget.saveAnswersController.removeListener(_handleControllerChange);
 
     super.dispose();
   }
@@ -61,22 +67,34 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
   }
 
   Future<void> _loadQuestions() async {
-    await widget.questionsController.load(
+    final loaded = await widget.questionsController.load(
       sessionToken: widget.attempt.sessionToken,
+    );
+
+    if (!loaded || !mounted) {
+      return;
+    }
+
+    widget.saveAnswersController.hydrate(
+      widget.questionsController.localAnswers,
     );
   }
 
   Future<bool> _confirmExit() async {
+    final hasPending = widget.saveAnswersController.hasPendingAnswers;
+
+    final message = hasPending
+        ? 'Existen respuestas pendientes o con errores de guardado. '
+              'Si sales, esos cambios locales se perderán.'
+        : 'Puedes salir del examen y reanudarlo posteriormente. '
+              'Las respuestas guardadas permanecerán disponibles.';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Salir del examen'),
-          content: const Text(
-            'Las respuestas todavía no se guardan en el servidor. '
-            'Si sales, las respuestas capturadas en esta pantalla '
-            'se perderán.',
-          ),
+          content: Text(message),
           actions: [
             TextButton(
               onPressed: () {
@@ -106,14 +124,86 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
       return;
     }
 
+    widget.saveAnswersController.reset();
     widget.questionsController.reset();
+
     Navigator.of(context).pop();
   }
 
+  Future<bool> _saveCurrentQuestion() async {
+    final question = widget.questionsController.currentQuestion;
+
+    if (question == null) {
+      return true;
+    }
+
+    final saveState = widget.saveAnswersController.stateFor(question.id);
+
+    if (!saveState.hasChanges) {
+      return true;
+    }
+
+    final saved = await widget.saveAnswersController.save(
+      sessionToken: widget.attempt.sessionToken,
+      questionId: question.id,
+    );
+
+    if (!saved && mounted) {
+      final currentState = widget.saveAnswersController.stateFor(question.id);
+
+      final message =
+          currentState.errorMessage ?? 'No fue posible guardar la respuesta.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Reintentar',
+            onPressed: () {
+              widget.saveAnswersController.retry(
+                sessionToken: widget.attempt.sessionToken,
+                questionId: question.id,
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    return saved;
+  }
+
+  Future<void> _goToNextQuestion() async {
+    final saved = await _saveCurrentQuestion();
+
+    if (!saved || !mounted) {
+      return;
+    }
+
+    widget.questionsController.next();
+  }
+
+  Future<void> _goToPreviousQuestion() async {
+    final saved = await _saveCurrentQuestion();
+
+    if (!saved || !mounted) {
+      return;
+    }
+
+    widget.questionsController.previous();
+  }
+
   Future<void> _showReview() async {
-    final controller = widget.questionsController;
-    final unanswered = controller.questions
-        .where((question) => !controller.isAnswered(question.id))
+    final saved = await _saveCurrentQuestion();
+
+    if (!saved || !mounted) {
+      return;
+    }
+
+    final questionsController = widget.questionsController;
+
+    final unanswered = questionsController.questions
+        .where((question) => !questionsController.isAnswered(question.id))
         .toList(growable: false);
 
     await showModalBottomSheet<void>(
@@ -133,8 +223,8 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                '${controller.answeredCount} de '
-                '${controller.totalQuestions} preguntas '
+                '${questionsController.answeredCount} de '
+                '${questionsController.totalQuestions} preguntas '
                 'tienen una respuesta local.',
                 style: Theme.of(bottomSheetContext).textTheme.bodyMedium,
               ),
@@ -144,8 +234,8 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
                   icon: Icons.check_circle_outline,
                   title: 'Todas tienen respuesta',
                   description:
-                      'El envío final se incorporará en '
-                      'HU-MOV-012.',
+                      'Todas las preguntas tienen una '
+                      'respuesta local.',
                 )
               else
                 _ReviewMessage(
@@ -161,11 +251,12 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
                   onPressed: () {
                     final firstUnanswered = unanswered.first;
 
-                    final index = controller.questions.indexWhere(
+                    final index = questionsController.questions.indexWhere(
                       (question) => question.id == firstUnanswered.id,
                     );
 
-                    controller.goTo(index);
+                    questionsController.goTo(index);
+
                     Navigator.of(bottomSheetContext).pop();
                   },
                   child: const Text('Ir a la primera pendiente'),
@@ -246,13 +337,24 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
             child: _QuestionCard(
               question: question,
               answer: controller.currentAnswer,
+              saveState: widget.saveAnswersController.stateFor(question.id),
               onChanged: (answer) {
                 controller.setAnswer(questionId: question.id, answer: answer);
+                widget.saveAnswersController.setLocalAnswer(
+                  questionId: question.id,
+                  answer: answer,
+                );
               },
             ),
           ),
         ),
-        _QuestionNavigation(controller: controller, onReview: _showReview),
+        _QuestionNavigation(
+          controller: controller,
+          saveController: widget.saveAnswersController,
+          onPrevious: _goToPreviousQuestion,
+          onNext: _goToNextQuestion,
+          onReview: _showReview,
+        ),
       ],
     );
   }
@@ -311,11 +413,13 @@ class _QuestionCard extends StatelessWidget {
     required this.question,
     required this.answer,
     required this.onChanged,
+    required this.saveState,
   });
 
   final StudentExamQuestion question;
   final String answer;
   final ValueChanged<String> onChanged;
+  final AnswerSaveState saveState;
 
   @override
   Widget build(BuildContext context) {
@@ -362,6 +466,8 @@ class _QuestionCard extends StatelessWidget {
               answer: answer,
               onChanged: onChanged,
             ),
+            const SizedBox(height: AppSpacing.md),
+            _AnswerSaveIndicator(state: saveState),
           ],
         ),
       ),
@@ -444,13 +550,27 @@ class _QuestionAnswerField extends StatelessWidget {
 }
 
 class _QuestionNavigation extends StatelessWidget {
-  const _QuestionNavigation({required this.controller, required this.onReview});
+  const _QuestionNavigation({
+    required this.controller,
+    required this.saveController,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onReview,
+  });
 
   final ExamQuestionsController controller;
+  final SaveAnswersController saveController;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
   final VoidCallback onReview;
 
   @override
   Widget build(BuildContext context) {
+    final question = controller.currentQuestion;
+
+    final isSaving =
+        question != null && saveController.stateFor(question.id).isSaving;
+
     return Material(
       elevation: 8,
       color: Theme.of(context).colorScheme.surface,
@@ -463,8 +583,8 @@ class _QuestionNavigation extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   key: const Key('previous-question-button'),
-                  onPressed: controller.canGoPrevious
-                      ? controller.previous
+                  onPressed: controller.canGoPrevious && !isSaving
+                      ? onPrevious
                       : null,
                   icon: const Icon(Icons.arrow_back),
                   label: const Text('Anterior'),
@@ -475,14 +595,14 @@ class _QuestionNavigation extends StatelessWidget {
                 child: controller.isLastQuestion
                     ? ElevatedButton.icon(
                         key: const Key('review-answers-button'),
-                        onPressed: onReview,
+                        onPressed: isSaving ? null : onReview,
                         icon: const Icon(Icons.fact_check_outlined),
                         label: const Text('Revisar'),
                       )
                     : ElevatedButton.icon(
                         key: const Key('next-question-button'),
-                        onPressed: controller.canGoNext
-                            ? controller.next
+                        onPressed: controller.canGoNext && !isSaving
+                            ? onNext
                             : null,
                         icon: const Icon(Icons.arrow_forward),
                         label: const Text('Siguiente'),
@@ -643,6 +763,69 @@ class _ReviewMessage extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerSaveIndicator extends StatelessWidget {
+  const _AnswerSaveIndicator({required this.state});
+
+  final AnswerSaveState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    final (icon, label, color) = switch (state.status) {
+      AnswerSaveStatus.unchanged => (
+        Icons.cloud_done_outlined,
+        'Sin cambios pendientes',
+        colors.onSurfaceVariant,
+      ),
+      AnswerSaveStatus.pending => (
+        Icons.cloud_upload_outlined,
+        'Pendiente de guardar',
+        colors.tertiary,
+      ),
+      AnswerSaveStatus.saving => (
+        Icons.sync,
+        'Guardando respuesta...',
+        colors.primary,
+      ),
+      AnswerSaveStatus.saved => (
+        Icons.check_circle_outline,
+        'Respuesta guardada',
+        colors.primary,
+      ),
+      AnswerSaveStatus.failure => (
+        Icons.error_outline,
+        'No se pudo guardar',
+        colors.error,
+      ),
+    };
+
+    return Semantics(
+      liveRegion: true,
+      child: Row(
+        children: [
+          if (state.status == AnswerSaveStatus.saving)
+            SizedBox(
+              width: AppDimensions.iconSmall,
+              height: AppDimensions.iconSmall,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            )
+          else
+            Icon(icon, size: AppDimensions.iconSmall, color: color),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: color),
             ),
           ),
         ],

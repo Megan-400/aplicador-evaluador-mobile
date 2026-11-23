@@ -2,6 +2,7 @@ import '../../../domain/entities/questions/student_exam_question.dart';
 import '../../../domain/entities/questions/student_exam_questions.dart';
 import '../../../domain/entities/questions/student_matching_pair.dart';
 import '../../../domain/entities/questions/student_question_type.dart';
+import '../../../domain/entities/questions/student_question_option.dart';
 
 /// Convierte la respuesta del endpoint de preguntas a entidades de dominio.
 /// La respuesta contiene:
@@ -122,22 +123,7 @@ abstract final class StudentExamQuestionsModel {
   /// `{"A": "Primera opción", "B": "Segunda opción"}`
   ///
   /// En esta historia se presentan los textos visibles del mapa.
-  static List<String> _multipleChoiceOptions(Object? value) {
-    if (value is List) {
-      if (value.isEmpty) {
-        throw const FormatException(
-          'La pregunta de opción múltiple no contiene '
-          'opciones válidas.',
-        );
-      }
-
-      return List.unmodifiable(
-        value.map((option) {
-          return _requiredString(option, field: 'opción');
-        }),
-      );
-    }
-
+  static List<StudentQuestionOption> _multipleChoiceOptions(Object? value) {
     if (value is Map) {
       if (value.isEmpty) {
         throw const FormatException(
@@ -146,9 +132,53 @@ abstract final class StudentExamQuestionsModel {
         );
       }
 
+      final options = <StudentQuestionOption>[];
+
+      for (final entry in value.entries) {
+        final optionValue = _requiredString(
+          entry.key,
+          field: 'valor de opción',
+        );
+
+        final optionLabel = _requiredString(
+          entry.value,
+          field: 'etiqueta de opción',
+        );
+
+        options.add(
+          StudentQuestionOption(value: optionValue, label: optionLabel),
+        );
+      }
+
+      return List.unmodifiable(options);
+    }
+
+    if (value is List) {
+      if (value.isEmpty) {
+        throw const FormatException(
+          'La pregunta de opción múltiple no contiene '
+          'opciones válidas.',
+        );
+      }
+
+      if (value.length > 26) {
+        throw const FormatException(
+          'La pregunta de opción múltiple contiene '
+          'demasiadas opciones.',
+        );
+      }
+
       return List.unmodifiable(
-        value.values.map((option) {
-          return _requiredString(option, field: 'opción');
+        value.asMap().entries.map((entry) {
+          final optionLabel = _requiredString(
+            entry.value,
+            field: 'etiqueta de opción',
+          );
+
+          return StudentQuestionOption(
+            value: _alphabeticOptionValue(entry.key),
+            label: optionLabel,
+          );
         }),
       );
     }
@@ -157,6 +187,10 @@ abstract final class StudentExamQuestionsModel {
       'La pregunta de opción múltiple no contiene '
       'opciones válidas.',
     );
+  }
+
+  static String _alphabeticOptionValue(int index) {
+    return String.fromCharCode('A'.codeUnitAt(0) + index);
   }
 
   static List<StudentMatchingPair> _matchingPairs(Object? value) {

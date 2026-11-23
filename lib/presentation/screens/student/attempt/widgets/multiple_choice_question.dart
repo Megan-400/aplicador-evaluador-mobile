@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_radii.dart';
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../domain/entities/questions/student_question_option.dart';
 
 /// Opciones seleccionables de una pregunta de opción múltiple.
 ///
-/// Por el momento se permite seleccionar una sola respuesta.
+/// Presenta la etiqueta visible de cada opción y conserva su valor estable,
+/// por ejemplo `A`, `B`, `C` o `D`.
 class MultipleChoiceQuestion extends StatelessWidget {
   const MultipleChoiceQuestion({
     required this.questionId,
@@ -17,9 +19,14 @@ class MultipleChoiceQuestion extends StatelessWidget {
   });
 
   final int questionId;
-  final List<String> options;
+  final List<StudentQuestionOption> options;
+
+  /// Valor seleccionado, por ejemplo `B`.
   final String selectedAnswer;
+
+  /// Comunica el valor estable de la opción, no su etiqueta.
   final ValueChanged<String> onChanged;
+
   final bool enabled;
 
   @override
@@ -45,8 +52,14 @@ class MultipleChoiceQuestion extends StatelessWidget {
       );
     }
 
+    final availableValues = options.map((option) => option.value).toSet();
+
+    final groupValue = availableValues.contains(selectedAnswer)
+        ? selectedAnswer
+        : null;
+
     return RadioGroup<String>(
-      groupValue: selectedAnswer.isEmpty ? null : selectedAnswer,
+      groupValue: groupValue,
       onChanged: (value) {
         if (enabled && value != null) {
           onChanged(value);
@@ -59,11 +72,11 @@ class MultipleChoiceQuestion extends StatelessWidget {
             _ChoiceOption(
               questionId: questionId,
               index: index,
-              label: options[index],
-              selected: options[index] == selectedAnswer,
+              option: options[index],
+              selected: options[index].value == selectedAnswer,
               enabled: enabled,
               onPressed: () {
-                onChanged(options[index]);
+                onChanged(options[index].value);
               },
             ),
             if (index < options.length - 1)
@@ -79,7 +92,7 @@ class _ChoiceOption extends StatelessWidget {
   const _ChoiceOption({
     required this.questionId,
     required this.index,
-    required this.label,
+    required this.option,
     required this.selected,
     required this.enabled,
     required this.onPressed,
@@ -87,7 +100,7 @@ class _ChoiceOption extends StatelessWidget {
 
   final int questionId;
   final int index;
-  final String label;
+  final StudentQuestionOption option;
   final bool selected;
   final bool enabled;
   final VoidCallback onPressed;
@@ -122,11 +135,31 @@ class _ChoiceOption extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Radio<String>(value: label, enabled: enabled),
+              Radio<String>(value: option.value, enabled: enabled),
               const SizedBox(width: AppSpacing.xs),
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? colors.primary : colors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? colors.primary : colors.outline,
+                  ),
+                ),
+                child: Text(
+                  option.value,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: selected ? colors.onPrimary : colors.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
-                  label,
+                  option.label,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     color: enabled ? colors.onSurface : colors.onSurfaceVariant,

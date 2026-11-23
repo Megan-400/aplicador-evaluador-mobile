@@ -61,7 +61,15 @@ void main() {
 
       expect(result.questions[1].type, StudentQuestionType.multipleChoice);
 
-      expect(result.questions[1].options, ['Primera opción', 'Segunda opción']);
+      expect(result.questions[1].options, hasLength(2));
+
+      expect(result.questions[1].options[0].value, 'A');
+
+      expect(result.questions[1].options[0].label, 'Primera opción');
+
+      expect(result.questions[1].options[1].value, 'B');
+
+      expect(result.questions[1].options[1].label, 'Segunda opción');
 
       expect(result.questions[2].type, StudentQuestionType.matching);
 
@@ -144,7 +152,15 @@ void main() {
         },
       });
 
-      expect(result.questions.single.options, ['Uno', 'Dos']);
+      final options = result.questions.single.options;
+
+      expect(options, hasLength(2));
+
+      expect(options[0].value, 'A');
+      expect(options[0].label, 'Uno');
+
+      expect(options[1].value, 'B');
+      expect(options[1].label, 'Dos');
 
       expect(result.savedAnswers[2], 'B');
     });
@@ -332,6 +348,39 @@ void main() {
         }),
         throwsA(isA<FormatException>()),
       );
+    });
+
+    test('asigna claves estables a opciones recibidas como lista', () {
+      final result = StudentExamQuestionsModel.fromJson({
+        'data': {
+          'nombre': 'Examen',
+          'preguntas': [
+            {
+              'examen_pregunta_id': 2,
+              'apartado_id': 20,
+              'tipo': 'opcion_multiple',
+              'enunciado': 'Selecciona una opción.',
+              'opciones': [
+                'Primera opción',
+                'Segunda opción',
+                'Tercera opción',
+              ],
+              'tiempo_segundos': 60,
+            },
+          ],
+          'respuestas': <String, dynamic>{},
+        },
+      });
+
+      final options = result.questions.single.options;
+
+      expect(options.map((option) => option.value).toList(), ['A', 'B', 'C']);
+
+      expect(options.map((option) => option.label).toList(), [
+        'Primera opción',
+        'Segunda opción',
+        'Tercera opción',
+      ]);
     });
   });
 }

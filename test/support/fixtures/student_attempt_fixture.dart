@@ -8,6 +8,10 @@ import 'package:aplicador_evaluador_mobile/domain/repositories/questions/student
 import 'package:aplicador_evaluador_mobile/domain/usecases/questions/load_student_exam_questions.dart';
 import 'package:aplicador_evaluador_mobile/presentation/state/questions/exam_questions_controller.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_questions.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/answers/student_saved_answer.dart';
+import 'package:aplicador_evaluador_mobile/domain/repositories/answers/student_answer_repository.dart';
+import 'package:aplicador_evaluador_mobile/domain/usecases/answers/save_student_answer.dart';
+import 'package:aplicador_evaluador_mobile/presentation/state/answers/save_answers_controller.dart';
 
 const testStudentCredentials = StudentSessionCredentials(
   folio: 'FOLIO123',
@@ -50,5 +54,22 @@ class _TestQuestionsRepository implements StudentExamQuestionsRepository {
       questions: [],
       savedAnswers: {},
     );
+  }
+}
+
+SaveAnswersController buildTestSaveAnswersController() {
+  return SaveAnswersController(
+    saveAnswer: SaveStudentAnswer(repository: _TestAnswerRepository()),
+  );
+}
+
+class _TestAnswerRepository implements StudentAnswerRepository {
+  @override
+  Future<StudentSavedAnswer> save({
+    required String sessionToken,
+    required int questionId,
+    required String answer,
+  }) async {
+    return StudentSavedAnswer(id: 1000 + questionId, questionId: questionId);
   }
 }
