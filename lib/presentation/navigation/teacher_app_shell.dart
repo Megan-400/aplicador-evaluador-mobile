@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/theme_controller.dart';
 import '../../domain/entities/teacher.dart';
 import '../../domain/repositories/exams_repository.dart';
 import '../../domain/repositories/groups_repository.dart';
+import '../../domain/repositories/results_repository.dart';
+import '../../domain/usecases/get_teacher_summary.dart';
 import '../screens/teacher/exams/teacher_exams_screen.dart';
 import '../screens/teacher/groups/teacher_groups_screen.dart';
+import '../screens/teacher/home/teacher_home_screen.dart';
+import '../screens/teacher/results/teacher_results_screen.dart';
 
 /// Contenedor principal de navegación del portal móvil del docente.
 class TeacherAppShell extends StatefulWidget {
@@ -13,12 +18,18 @@ class TeacherAppShell extends StatefulWidget {
     required this.teacher,
     required this.groupsRepository,
     required this.examsRepository,
+    required this.resultsRepository,
+    required this.getTeacherSummary,
+    required this.themeController,
     required this.onLogout,
   });
 
   final Teacher teacher;
   final GroupsRepository groupsRepository;
   final ExamsRepository examsRepository;
+  final ResultsRepository resultsRepository;
+  final GetTeacherSummary getTeacherSummary;
+  final ThemeController themeController;
   final VoidCallback onLogout;
 
   @override
@@ -28,14 +39,25 @@ class TeacherAppShell extends StatefulWidget {
 class _TeacherAppShellState extends State<TeacherAppShell> {
   int _selectedIndex = 0;
 
+  void _selectDestination(int index) {
+    if (index == _selectedIndex) {
+      return;
+    }
+
+    setState(() => _selectedIndex = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _PlaceholderScreen(
-            title: 'Hola, ${widget.teacher.name}',
+          TeacherHomeScreen(
+            teacher: widget.teacher,
+            getSummary: widget.getTeacherSummary,
+            themeController: widget.themeController,
+            onOpenTab: _selectDestination,
             onLogout: widget.onLogout,
           ),
           TeacherGroupsScreen(repository: widget.groupsRepository),
@@ -43,13 +65,16 @@ class _TeacherAppShellState extends State<TeacherAppShell> {
             examsRepository: widget.examsRepository,
             groupsRepository: widget.groupsRepository,
           ),
-          const _PlaceholderScreen(title: 'Resultados'),
+          TeacherResultsScreen(
+            examsRepository: widget.examsRepository,
+            groupsRepository: widget.groupsRepository,
+            resultsRepository: widget.resultsRepository,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
+        onDestinationSelected: _selectDestination,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -73,31 +98,6 @@ class _TeacherAppShellState extends State<TeacherAppShell> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.title, this.onLogout});
-
-  final String title;
-  final VoidCallback? onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          if (onLogout != null)
-            IconButton(
-              tooltip: 'Cerrar sesión',
-              icon: const Icon(Icons.logout),
-              onPressed: onLogout,
-            ),
-        ],
-      ),
-      body: const Center(child: Text('Próximamente')),
     );
   }
 }

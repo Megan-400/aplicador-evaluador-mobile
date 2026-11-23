@@ -10,4 +10,9 @@ class ApiConstants {
   static String alumnosDeGrupo(int grupoId) {
     return '/teacher/groups/$grupoId/students';
   }
+
+  /// Resultados por intento de un examen.
+  static String resultadosDeExamen(int examenId) {
+    return '/teacher/exams/$examenId/results';
+  }
 }

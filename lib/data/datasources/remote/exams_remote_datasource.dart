@@ -12,7 +12,7 @@ class ExamsRemoteDataSource {
     try {
       final respuesta = await ApiClient.dio.get(
         ApiConstants.examenes,
-        queryParameters: {if (groupId != null) 'grupo_id': groupId},
+        queryParameters: {'grupo_id': ?groupId},
       );
       final cuerpo = respuesta.data as Map<String, dynamic>;
       final datos = cuerpo['data'] as List<dynamic>;
