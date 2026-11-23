@@ -11,8 +11,7 @@ void main() {
     WidgetTester tester, {
     ThemeMode themeMode = ThemeMode.light,
   }) async {
-    final startAttemptController =
-        buildTestStartAttemptController();
+    final startAttemptController = buildTestStartAttemptController();
 
     addTearDown(startAttemptController.dispose);
 
@@ -25,6 +24,7 @@ void main() {
           dashboard: emptyStudentDashboard,
           credentials: testStudentCredentials,
           startAttemptController: startAttemptController,
+          questionsController: buildTestQuestionsController(),
           onSignOut: () {},
         ),
       ),
@@ -141,14 +141,14 @@ void main() {
       MaterialApp(
         theme: AppTheme.light,
         home: StudentAppShell(
-                dashboard: emptyStudentDashboard,
-                credentials: testStudentCredentials,
-                startAttemptController:
-                    buildTestStartAttemptController(),
-                onSignOut: () {
-                  signedOut = true;
-                },
-              ),
+          dashboard: emptyStudentDashboard,
+          credentials: testStudentCredentials,
+          startAttemptController: buildTestStartAttemptController(),
+          questionsController: buildTestQuestionsController(),
+          onSignOut: () {
+            signedOut = true;
+          },
+        ),
       ),
     );
 
@@ -175,14 +175,14 @@ void main() {
       MaterialApp(
         theme: AppTheme.light,
         home: StudentAppShell(
-                dashboard: emptyStudentDashboard,
-                credentials: testStudentCredentials,
-                startAttemptController:
-                    buildTestStartAttemptController(),
-                onSignOut: () {
-                  signedOut = true;
-                },
-              ),
+          dashboard: emptyStudentDashboard,
+          credentials: testStudentCredentials,
+          startAttemptController: buildTestStartAttemptController(),
+          questionsController: buildTestQuestionsController(),
+          onSignOut: () {
+            signedOut = true;
+          },
+        ),
       ),
     );
 

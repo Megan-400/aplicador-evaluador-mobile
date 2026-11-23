@@ -10,6 +10,8 @@ import '../../domain/entities/student_exam_summary.dart';
 import '../../domain/entities/student_session_credentials.dart';
 import '../screens/student/exams/detail/student_exam_detail_screen.dart';
 import '../state/attempts/start_exam_attempt_controller.dart';
+import '../screens/student/attempt/student_exam_attempt_screen.dart';
+import '../state/questions/exam_questions_controller.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
@@ -19,6 +21,7 @@ class StudentAppShell extends StatefulWidget {
     required this.dashboard,
     required this.credentials,
     required this.startAttemptController,
+    required this.questionsController,
     required this.onSignOut,
     super.key,
   });
@@ -26,6 +29,7 @@ class StudentAppShell extends StatefulWidget {
   final StudentDashboard dashboard;
   final StudentSessionCredentials credentials;
   final StartExamAttemptController startAttemptController;
+  final ExamQuestionsController questionsController;
   final VoidCallback onSignOut;
 
   @override
@@ -151,9 +155,10 @@ class _StudentAppShellState extends State<StudentAppShell> {
   Future<void> _openExamDetail(StudentExamSummary exam) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) {
+        builder: (detailContext) {
           return StudentExamDetailScreen(
             exam: exam,
+            startErrorMessage: () => widget.startAttemptController.errorMessage,
             onStartExam: (_) async {
               final examId = int.tryParse(exam.id);
 
@@ -161,11 +166,39 @@ class _StudentAppShellState extends State<StudentAppShell> {
                 return false;
               }
 
-              return widget.startAttemptController.start(
+              final navigator = Navigator.of(detailContext);
+
+              final started = await widget.startAttemptController.start(
                 folio: widget.credentials.folio,
                 accessCode: widget.credentials.accessCode,
                 examId: examId,
               );
+
+              if (!started || !mounted || !navigator.mounted) {
+                return false;
+              }
+
+              final attempt = widget.startAttemptController.attempt;
+
+              if (attempt == null) {
+                return false;
+              }
+
+              widget.questionsController.reset();
+
+              await navigator.pushReplacement(
+                MaterialPageRoute<void>(
+                  builder: (context) {
+                    return StudentExamAttemptScreen(
+                      exam: exam,
+                      attempt: attempt,
+                      questionsController: widget.questionsController,
+                    );
+                  },
+                ),
+              );
+
+              return true;
             },
           );
         },
