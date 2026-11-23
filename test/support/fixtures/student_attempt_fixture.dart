@@ -4,6 +4,10 @@ import 'package:aplicador_evaluador_mobile/domain/entities/student_session_crede
 import 'package:aplicador_evaluador_mobile/domain/repositories/attempts/student_exam_attempt_repository.dart';
 import 'package:aplicador_evaluador_mobile/domain/usecases/attempts/start_student_exam_attempt.dart';
 import 'package:aplicador_evaluador_mobile/presentation/state/attempts/start_exam_attempt_controller.dart';
+import 'package:aplicador_evaluador_mobile/domain/repositories/questions/student_exam_questions_repository.dart';
+import 'package:aplicador_evaluador_mobile/domain/usecases/questions/load_student_exam_questions.dart';
+import 'package:aplicador_evaluador_mobile/presentation/state/questions/exam_questions_controller.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_questions.dart';
 
 const testStudentCredentials = StudentSessionCredentials(
   folio: 'FOLIO123',
@@ -12,14 +16,11 @@ const testStudentCredentials = StudentSessionCredentials(
 
 StartExamAttemptController buildTestStartAttemptController() {
   return StartExamAttemptController(
-    startAttempt: StartStudentExamAttempt(
-      repository: _TestAttemptRepository(),
-    ),
+    startAttempt: StartStudentExamAttempt(repository: _TestAttemptRepository()),
   );
 }
 
-class _TestAttemptRepository
-    implements StudentExamAttemptRepository {
+class _TestAttemptRepository implements StudentExamAttemptRepository {
   @override
   Future<StudentExamAttempt> start({
     required String folio,
@@ -29,6 +30,25 @@ class _TestAttemptRepository
     throw const ApiException(
       type: ApiFailureType.serviceUnavailable,
       message: 'Servicio de prueba no disponible.',
+    );
+  }
+}
+
+ExamQuestionsController buildTestQuestionsController() {
+  return ExamQuestionsController(
+    loadQuestions: LoadStudentExamQuestions(
+      repository: _TestQuestionsRepository(),
+    ),
+  );
+}
+
+class _TestQuestionsRepository implements StudentExamQuestionsRepository {
+  @override
+  Future<StudentExamQuestions> load({required String sessionToken}) async {
+    return const StudentExamQuestions(
+      examName: 'Examen de prueba',
+      questions: [],
+      savedAnswers: {},
     );
   }
 }

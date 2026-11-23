@@ -12,11 +12,13 @@ class StudentExamDetailScreen extends StatefulWidget {
   const StudentExamDetailScreen({
     required this.exam,
     required this.onStartExam,
+    this.startErrorMessage,
     super.key,
   });
 
   final StudentExamSummary exam;
   final StartExamCallback onStartExam;
+  final String? Function()? startErrorMessage;
 
   @override
   State<StudentExamDetailScreen> createState() {
@@ -90,9 +92,12 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
       _isStarting = false;
     });
 
-    final message = started
-        ? 'El intento se inició correctamente.'
-        : 'El servicio para iniciar el examen todavía no está disponible.';
+    if (started) {
+      return;
+    }
+
+    final message =
+        widget.startErrorMessage?.call() ?? 'No fue posible iniciar el examen.';
 
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));

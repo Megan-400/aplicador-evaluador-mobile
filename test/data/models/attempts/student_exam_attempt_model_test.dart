@@ -9,8 +9,7 @@ void main() {
           'examen_id': 25,
           'intento_id': 123,
           'token_sesion': 'token-sintetico-de-prueba',
-          'fecha_inicio':
-              '2026-11-20T18:30:00-06:00',
+          'fecha_inicio': '2026-11-20T18:30:00-06:00',
           'reanudado': false,
         },
       });
@@ -28,8 +27,7 @@ void main() {
           'examen_id': 25,
           'intento_id': 123,
           'token_sesion': 'token-sintetico-de-prueba',
-          'fecha_inicio':
-              '2026-11-20T18:30:00-06:00',
+          'fecha_inicio': '2026-11-20T18:30:00-06:00',
           'reanudado': true,
         },
       });
@@ -45,8 +43,7 @@ void main() {
           'examen_id': '25',
           'intento_id': '123',
           'token_sesion': 'token-sintetico-de-prueba',
-          'fecha_inicio':
-              '2026-11-20T18:30:00-06:00',
+          'fecha_inicio': '2026-11-20T18:30:00-06:00',
           'reanudado': false,
         },
       });
@@ -61,8 +58,7 @@ void main() {
           'data': {
             'examen_id': 25,
             'intento_id': 123,
-            'fecha_inicio':
-                '2026-11-20T18:30:00-06:00',
+            'fecha_inicio': '2026-11-20T18:30:00-06:00',
             'reanudado': false,
           },
         }),
@@ -92,8 +88,7 @@ void main() {
             'examen_id': 25,
             'intento_id': 123,
             'token_sesion': 'token-sintetico-de-prueba',
-            'fecha_inicio':
-                '2026-11-20T18:30:00-06:00',
+            'fecha_inicio': '2026-11-20T18:30:00-06:00',
           },
         }),
         throwsA(isA<FormatException>()),
@@ -107,8 +102,7 @@ void main() {
             'examen_id': 0,
             'intento_id': 123,
             'token_sesion': 'token-sintetico-de-prueba',
-            'fecha_inicio':
-                '2026-11-20T18:30:00-06:00',
+            'fecha_inicio': '2026-11-20T18:30:00-06:00',
             'reanudado': false,
           },
         }),

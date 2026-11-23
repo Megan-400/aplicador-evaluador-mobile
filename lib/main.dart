@@ -11,6 +11,10 @@ import 'data/datasources/remote/attempts/student_exam_attempt_remote_data_source
 import 'data/repositories/attempts/student_exam_attempt_repository_impl.dart';
 import 'domain/usecases/attempts/start_student_exam_attempt.dart';
 import 'presentation/state/attempts/start_exam_attempt_controller.dart';
+import 'data/datasources/remote/questions/student_exam_questions_remote_data_source.dart';
+import 'data/repositories/questions/student_exam_questions_repository_impl.dart';
+import 'domain/usecases/questions/load_student_exam_questions.dart';
+import 'presentation/state/questions/exam_questions_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,8 +31,9 @@ class _MyAppState extends State<MyApp> {
   late final StudentDashboardRemoteDataSource _remoteDataSource;
   late final StudentDashboardController _controller;
   late final StudentExamAttemptRemoteDataSource _attemptRemoteDataSource;
-
   late final StartExamAttemptController _startAttemptController;
+  late final StudentExamQuestionsRemoteDataSource _questionsRemoteDataSource;
+  late final ExamQuestionsController _questionsController;
 
   @override
   void initState() {
@@ -53,6 +58,16 @@ class _MyAppState extends State<MyApp> {
     _startAttemptController = StartExamAttemptController(
       startAttempt: StartStudentExamAttempt(repository: attemptRepository),
     );
+
+    _questionsRemoteDataSource = StudentExamQuestionsRemoteDataSource();
+
+    final questionsRepository = StudentExamQuestionsRepositoryImpl(
+      remoteDataSource: _questionsRemoteDataSource,
+    );
+
+    _questionsController = ExamQuestionsController(
+      loadQuestions: LoadStudentExamQuestions(repository: questionsRepository),
+    );
   }
 
   @override
@@ -61,6 +76,8 @@ class _MyAppState extends State<MyApp> {
     _remoteDataSource.close();
     _startAttemptController.dispose();
     _attemptRemoteDataSource.close();
+    _questionsController.dispose();
+    _questionsRemoteDataSource.close();
     super.dispose();
   }
 
@@ -86,7 +103,9 @@ class _MyAppState extends State<MyApp> {
             dashboard: dashboard,
             credentials: credentials,
             startAttemptController: _startAttemptController,
+            questionsController: _questionsController,
             onSignOut: () {
+              _questionsController.reset();
               _startAttemptController.reset();
               _controller.signOut();
             },
