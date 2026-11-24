@@ -185,6 +185,132 @@ void main() {
         throwsA(isA<FormatException>()),
       );
     });
+
+    test('convierte un examen entregado como completado', () {
+      final dashboard = StudentDashboardModel.fromJson({
+        'data': {
+          'alumno': {'id': 1, 'nombre': 'Alumno de prueba', 'grupo_id': 10},
+          'grupos': <Object>[],
+          'examenes': [
+            {
+              'id': 25,
+              'nombre': 'Evaluación parcial',
+              'materia': 'Programación',
+              'estado': 'entregado',
+              'duracion_segundos': 1800,
+              'total_preguntas': 3,
+              'fecha_apertura': null,
+              'fecha_cierre': null,
+            },
+          ],
+          'entregas': <Object>[],
+        },
+      });
+
+      expect(dashboard.exams.single.status, StudentExamStatus.completed);
+    });
+
+    test('convierte un examen finalizado como completado', () {
+      final dashboard = StudentDashboardModel.fromJson({
+        'data': {
+          'alumno': {'id': 1, 'nombre': 'Alumno de prueba', 'grupo_id': 10},
+          'grupos': <Object>[],
+          'examenes': [
+            {
+              'id': 25,
+              'nombre': 'Evaluación parcial',
+              'materia': 'Programación',
+              'estado': 'finalizado',
+              'duracion_segundos': 1800,
+              'total_preguntas': 3,
+              'fecha_apertura': null,
+              'fecha_cierre': null,
+            },
+          ],
+          'entregas': <Object>[],
+        },
+      });
+
+      expect(dashboard.exams.single.status, StudentExamStatus.completed);
+    });
+
+    test('convierte un examen entregado como completado', () {
+      final dashboard = StudentDashboardModel.fromJson({
+        'data': {
+          'alumno': {'id': 1, 'nombre': 'Alumno de prueba', 'grupo_id': 10},
+          'grupos': <Object>[],
+          'examenes': [
+            {
+              'id': 25,
+              'nombre': 'Evaluación parcial',
+              'materia': 'Programación',
+              'estado': 'entregado',
+              'duracion_segundos': 1800,
+              'total_preguntas': 3,
+              'fecha_apertura': null,
+              'fecha_cierre': null,
+            },
+          ],
+          'entregas': <Object>[],
+        },
+      });
+
+      expect(dashboard.exams.single.status, StudentExamStatus.completed);
+    });
+
+    test('acepta una entrega en revisión sin calificación ni escala', () {
+      final dashboard = StudentDashboardModel.fromJson({
+        'data': {
+          'alumno': {'id': 1, 'nombre': 'Alumno de prueba', 'grupo_id': 10},
+          'grupos': <Object>[],
+          'examenes': <Object>[],
+          'entregas': [
+            {
+              'id': 50,
+              'nombre': 'Evaluación parcial',
+              'materia': 'Programación',
+              'calificacion': null,
+              'escala': null,
+              'estado': 'en_revision',
+              'fecha_entrega': '2026-11-24T10:00:00-06:00',
+            },
+          ],
+        },
+      });
+
+      final grade = dashboard.grades.single;
+
+      expect(grade.score, 0);
+      expect(grade.maximumScore, 100);
+      expect(grade.result, StudentGradeResult.pending);
+    });
+
+    test('acepta valores numéricos vacíos en una entrega pendiente', () {
+      final dashboard = StudentDashboardModel.fromJson({
+        'data': {
+          'alumno': {'id': 1, 'nombre': 'Alumno de prueba', 'grupo_id': 10},
+          'grupos': <Object>[],
+          'examenes': <Object>[],
+          'entregas': [
+            {
+              'id': 50,
+              'nombre': 'Evaluación parcial',
+              'materia': 'Programación',
+              'calificacion': '',
+              'escala': ' ',
+              'estado': 'sin_publicar',
+              'fecha_entrega': '2026-11-24T10:00:00-06:00',
+            },
+          ],
+        },
+      });
+
+      final grade = dashboard.grades.single;
+
+      expect(grade.score, 0);
+      expect(grade.maximumScore, 100);
+      expect(grade.result, StudentGradeResult.hidden);
+    });
   });
 }
 

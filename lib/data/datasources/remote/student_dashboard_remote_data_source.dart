@@ -48,17 +48,23 @@ class StudentDashboardRemoteDataSource {
       throw const ApiException(
         type: ApiFailureType.connection,
         message:
-            'El servicio tardó demasiado en responder. Inténtalo nuevamente.',
+            'El servicio tardó demasiado en responder. '
+            'Inténtalo nuevamente.',
       );
     } on SocketException {
       throw const ApiException(
         type: ApiFailureType.connection,
-        message: 'No se pudo establecer conexión. Revisa tu acceso a internet.',
+        message:
+            'No fue posible conectarse. '
+            'Revisa tu conexión.',
       );
-    } on FormatException {
-      throw const ApiException(
+    } on FormatException catch (error) {
+      throw ApiException(
         type: ApiFailureType.invalidResponse,
-        message: 'La respuesta del servicio no tiene un formato válido.',
+        message: error.message.isEmpty
+            ? 'La respuesta del servicio no tiene '
+                  'un formato válido.'
+            : error.message,
       );
     } on http.ClientException {
       throw const ApiException(
@@ -72,7 +78,9 @@ class StudentDashboardRemoteDataSource {
     final decoded = jsonDecode(body);
 
     if (decoded is! Map<String, dynamic>) {
-      throw const FormatException();
+      throw const FormatException(
+        'La respuesta del servicio no es un objeto JSON.',
+      );
     }
 
     return decoded;
@@ -100,14 +108,17 @@ class StudentDashboardRemoteDataSource {
       429 => const ApiException(
         type: ApiFailureType.rateLimited,
         statusCode: 429,
-        message: 'Se realizaron demasiados intentos. Espera un momento.',
+        message:
+            'Se realizaron demasiados intentos. '
+            'Espera un momento.',
       ),
       _ => ApiException(
         type: ApiFailureType.serviceUnavailable,
         statusCode: statusCode,
         message:
             serverMessage ??
-            'No se pudieron cargar tus datos. Inténtalo nuevamente.',
+            'No se pudieron cargar tus datos. '
+                'Inténtalo nuevamente.',
       ),
     };
   }
