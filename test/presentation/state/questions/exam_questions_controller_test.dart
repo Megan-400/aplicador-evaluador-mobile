@@ -7,6 +7,7 @@ import 'package:aplicador_evaluador_mobile/domain/repositories/questions/student
 import 'package:aplicador_evaluador_mobile/domain/usecases/questions/load_student_exam_questions.dart';
 import 'package:aplicador_evaluador_mobile/presentation/state/questions/exam_questions_controller.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_questions.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_question_option.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -376,7 +377,10 @@ const List<StudentExamQuestion> _questions = [
     type: StudentQuestionType.multipleChoice,
     prompt: 'Pregunta de opción múltiple sintética.',
     timeSeconds: 90,
-    options: ['Primera opción', 'Segunda opción'],
+    options: [
+      StudentQuestionOption(value: 'A', label: 'Primera opción'),
+      StudentQuestionOption(value: 'B', label: 'Segunda opción'),
+    ],
   ),
   StudentExamQuestion(
     id: 3,

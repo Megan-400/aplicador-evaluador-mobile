@@ -12,6 +12,7 @@ import '../screens/student/exams/detail/student_exam_detail_screen.dart';
 import '../state/attempts/start_exam_attempt_controller.dart';
 import '../screens/student/attempt/student_exam_attempt_screen.dart';
 import '../state/questions/exam_questions_controller.dart';
+import '../state/answers/save_answers_controller.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
@@ -22,6 +23,7 @@ class StudentAppShell extends StatefulWidget {
     required this.credentials,
     required this.startAttemptController,
     required this.questionsController,
+    required this.saveAnswersController,
     required this.onSignOut,
     super.key,
   });
@@ -30,6 +32,7 @@ class StudentAppShell extends StatefulWidget {
   final StudentSessionCredentials credentials;
   final StartExamAttemptController startAttemptController;
   final ExamQuestionsController questionsController;
+  final SaveAnswersController saveAnswersController;
   final VoidCallback onSignOut;
 
   @override
@@ -193,11 +196,11 @@ class _StudentAppShellState extends State<StudentAppShell> {
                       exam: exam,
                       attempt: attempt,
                       questionsController: widget.questionsController,
+                      saveAnswersController: widget.saveAnswersController,
                     );
                   },
                 ),
               );
-
               return true;
             },
           );

@@ -23,8 +23,9 @@ void main() {
         home: StudentAppShell(
           dashboard: emptyStudentDashboard,
           credentials: testStudentCredentials,
-          startAttemptController: startAttemptController,
+          startAttemptController: buildTestStartAttemptController(),
           questionsController: buildTestQuestionsController(),
+          saveAnswersController: buildTestSaveAnswersController(),
           onSignOut: () {},
         ),
       ),
@@ -145,6 +146,7 @@ void main() {
           credentials: testStudentCredentials,
           startAttemptController: buildTestStartAttemptController(),
           questionsController: buildTestQuestionsController(),
+          saveAnswersController: buildTestSaveAnswersController(),
           onSignOut: () {
             signedOut = true;
           },
@@ -166,41 +168,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(signedOut, isTrue);
-  });
-
-  testWidgets('confirma el cierre de sesión del alumno', (tester) async {
-    var signedOut = false;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: StudentAppShell(
-          dashboard: emptyStudentDashboard,
-          credentials: testStudentCredentials,
-          startAttemptController: buildTestStartAttemptController(),
-          questionsController: buildTestQuestionsController(),
-          onSignOut: () {
-            signedOut = true;
-          },
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('Perfil'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Mi perfil'), findsOneWidget);
-    expect(find.byTooltip('Atrás'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('student-sign-out-button')));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('confirm-student-sign-out-button')));
-    await tester.pumpAndSettle();
-
-    expect(signedOut, isTrue);
-    expect(find.text('Mi perfil'), findsNothing);
   });
 }

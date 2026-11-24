@@ -15,6 +15,10 @@ import 'data/datasources/remote/questions/student_exam_questions_remote_data_sou
 import 'data/repositories/questions/student_exam_questions_repository_impl.dart';
 import 'domain/usecases/questions/load_student_exam_questions.dart';
 import 'presentation/state/questions/exam_questions_controller.dart';
+import 'data/datasources/remote/answers/student_answer_remote_data_source.dart';
+import 'data/repositories/answers/student_answer_repository_impl.dart';
+import 'domain/usecases/answers/save_student_answer.dart';
+import 'presentation/state/answers/save_answers_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,6 +38,8 @@ class _MyAppState extends State<MyApp> {
   late final StartExamAttemptController _startAttemptController;
   late final StudentExamQuestionsRemoteDataSource _questionsRemoteDataSource;
   late final ExamQuestionsController _questionsController;
+  late final StudentAnswerRemoteDataSource _answerRemoteDataSource;
+  late final SaveAnswersController _saveAnswersController;
 
   @override
   void initState() {
@@ -68,6 +74,16 @@ class _MyAppState extends State<MyApp> {
     _questionsController = ExamQuestionsController(
       loadQuestions: LoadStudentExamQuestions(repository: questionsRepository),
     );
+
+    _answerRemoteDataSource = StudentAnswerRemoteDataSource();
+
+    final answerRepository = StudentAnswerRepositoryImpl(
+      remoteDataSource: _answerRemoteDataSource,
+    );
+
+    _saveAnswersController = SaveAnswersController(
+      saveAnswer: SaveStudentAnswer(repository: answerRepository),
+    );
   }
 
   @override
@@ -78,6 +94,8 @@ class _MyAppState extends State<MyApp> {
     _attemptRemoteDataSource.close();
     _questionsController.dispose();
     _questionsRemoteDataSource.close();
+    _saveAnswersController.dispose();
+    _answerRemoteDataSource.close();
     super.dispose();
   }
 
@@ -102,9 +120,11 @@ class _MyAppState extends State<MyApp> {
           return StudentAppShell(
             dashboard: dashboard,
             credentials: credentials,
+            saveAnswersController: _saveAnswersController,
             startAttemptController: _startAttemptController,
             questionsController: _questionsController,
             onSignOut: () {
+              _saveAnswersController.reset();
               _questionsController.reset();
               _startAttemptController.reset();
               _controller.signOut();

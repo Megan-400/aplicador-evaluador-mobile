@@ -1,31 +1,48 @@
 import 'package:aplicador_evaluador_mobile/core/network/api_exception.dart';
 import 'package:aplicador_evaluador_mobile/core/theme/app_theme.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/answers/student_saved_answer.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/attempts/student_exam_attempt.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_question.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_questions.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_matching_pair.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_question_option.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_question_type.dart';
 import 'package:aplicador_evaluador_mobile/domain/entities/student_exam_summary.dart';
+import 'package:aplicador_evaluador_mobile/domain/repositories/answers/student_answer_repository.dart';
 import 'package:aplicador_evaluador_mobile/domain/repositories/questions/student_exam_questions_repository.dart';
+import 'package:aplicador_evaluador_mobile/domain/usecases/answers/save_student_answer.dart';
 import 'package:aplicador_evaluador_mobile/domain/usecases/questions/load_student_exam_questions.dart';
 import 'package:aplicador_evaluador_mobile/presentation/screens/student/attempt/student_exam_attempt_screen.dart';
+import 'package:aplicador_evaluador_mobile/presentation/state/answers/save_answers_controller.dart';
 import 'package:aplicador_evaluador_mobile/presentation/state/questions/exam_questions_controller.dart';
-import 'package:aplicador_evaluador_mobile/domain/entities/questions/student_exam_questions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<ExamQuestionsController> buildScreen(
+  Future<_ScreenDependencies> buildScreen(
     WidgetTester tester, {
-    StudentExamQuestionsRepository? repository,
+    StudentExamQuestionsRepository? questionsRepository,
+    StudentAnswerRepository? answerRepository,
     ThemeMode themeMode = ThemeMode.light,
   }) async {
-    final controller = ExamQuestionsController(
+    final resolvedQuestionsRepository =
+        questionsRepository ?? _SuccessQuestionsRepository();
+
+    final resolvedAnswerRepository =
+        answerRepository ?? _SuccessAnswerRepository();
+
+    final questionsController = ExamQuestionsController(
       loadQuestions: LoadStudentExamQuestions(
-        repository: repository ?? _SuccessRepository(),
+        repository: resolvedQuestionsRepository,
       ),
     );
 
-    addTearDown(controller.dispose);
+    final saveAnswersController = SaveAnswersController(
+      saveAnswer: SaveStudentAnswer(repository: resolvedAnswerRepository),
+    );
+
+    addTearDown(questionsController.dispose);
+    addTearDown(saveAnswersController.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -35,23 +52,33 @@ void main() {
         home: StudentExamAttemptScreen(
           exam: _exam,
           attempt: _attempt,
-          questionsController: controller,
+          questionsController: questionsController,
+          saveAnswersController: saveAnswersController,
         ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    return controller;
+    return _ScreenDependencies(
+      questionsController: questionsController,
+      saveAnswersController: saveAnswersController,
+      questionsRepository: resolvedQuestionsRepository,
+      answerRepository: resolvedAnswerRepository,
+    );
   }
 
   testWidgets('muestra la primera pregunta y el progreso', (tester) async {
     await buildScreen(tester);
 
     expect(find.text('Pregunta 1 de 4'), findsOneWidget);
+
     expect(find.text('0/4 respondidas'), findsOneWidget);
+
     expect(find.text('Pregunta abierta sintética.'), findsOneWidget);
+
     expect(find.byKey(const Key('previous-question-button')), findsOneWidget);
+
     expect(find.byKey(const Key('next-question-button')), findsOneWidget);
   });
 
@@ -62,6 +89,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pregunta 2 de 4'), findsOneWidget);
+
     expect(find.text('Pregunta de opción múltiple sintética.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('previous-question-button')));
@@ -70,7 +98,41 @@ void main() {
     expect(find.text('Pregunta 1 de 4'), findsOneWidget);
   });
 
-  testWidgets('conserva una respuesta al navegar', (tester) async {
+  testWidgets('guarda una respuesta abierta antes de avanzar', (tester) async {
+    final repository = _SuccessAnswerRepository();
+
+    final dependencies = await buildScreen(
+      tester,
+      answerRepository: repository,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('open-answer-1')),
+      'Respuesta guardada desde la pantalla.',
+    );
+
+    expect(
+      dependencies.saveAnswersController.stateFor(1).status,
+      AnswerSaveStatus.pending,
+    );
+
+    await tester.tap(find.byKey(const Key('next-question-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pregunta 2 de 4'), findsOneWidget);
+
+    expect(repository.callCount, 1);
+    expect(repository.receivedQuestionId, 1);
+
+    expect(repository.receivedAnswer, 'Respuesta guardada desde la pantalla.');
+
+    expect(
+      dependencies.saveAnswersController.stateFor(1).status,
+      AnswerSaveStatus.saved,
+    );
+  });
+
+  testWidgets('conserva una respuesta local al navegar', (tester) async {
     await buildScreen(tester);
 
     await tester.enterText(
@@ -85,10 +147,96 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Respuesta local.'), findsOneWidget);
+
     expect(find.text('1/4 respondidas'), findsOneWidget);
   });
 
-  testWidgets('muestra revisar en la última pregunta', (tester) async {
+  testWidgets('restaura una respuesta abierta al reanudar', (tester) async {
+    await buildScreen(
+      tester,
+      questionsRepository: _SuccessQuestionsRepository(
+        savedAnswers: const {1: 'Respuesta recuperada.'},
+      ),
+    );
+
+    expect(find.text('Respuesta recuperada.'), findsOneWidget);
+
+    expect(find.text('1/4 respondidas'), findsOneWidget);
+  });
+
+  testWidgets('restaura una opción múltiple mediante su clave', (tester) async {
+    await buildScreen(
+      tester,
+      questionsRepository: _SuccessQuestionsRepository(
+        savedAnswers: const {2: 'B'},
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('next-question-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pregunta 2 de 4'), findsOneWidget);
+
+    final radioGroup = tester.widget<RadioGroup<String>>(
+      find.byType(RadioGroup<String>),
+    );
+
+    expect(radioGroup.groupValue, 'B');
+
+    expect(find.text('Segunda opción'), findsOneWidget);
+
+    expect(find.text('1/4 respondidas'), findsOneWidget);
+  });
+
+  testWidgets('selecciona y guarda la clave de una opción múltiple', (
+    tester,
+  ) async {
+    final repository = _SuccessAnswerRepository();
+
+    await buildScreen(tester, answerRepository: repository);
+
+    await tester.tap(find.byKey(const Key('next-question-button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey<String>('choice-2-1')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('next-question-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.receivedQuestionId, 2);
+    expect(repository.receivedAnswer, 'B');
+
+    expect(repository.receivedAnswer, isNot('Segunda opción'));
+  });
+
+  testWidgets('impide avanzar cuando falla el guardado', (tester) async {
+    final dependencies = await buildScreen(
+      tester,
+      answerRepository: _FailureAnswerRepository(),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('open-answer-1')),
+      'Respuesta que no pudo guardarse.',
+    );
+
+    await tester.tap(find.byKey(const Key('next-question-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pregunta 1 de 4'), findsOneWidget);
+
+    expect(
+      dependencies.saveAnswersController.stateFor(1).status,
+      AnswerSaveStatus.failure,
+    );
+
+    expect(find.text('No fue posible guardar la respuesta.'), findsOneWidget);
+
+    expect(find.text('Reintentar'), findsOneWidget);
+  });
+
+  testWidgets('muestra Revisar en la última pregunta', (tester) async {
     await buildScreen(tester);
 
     for (var index = 0; index < 3; index++) {
@@ -101,6 +249,36 @@ void main() {
     expect(find.byKey(const Key('review-answers-button')), findsOneWidget);
   });
 
+  testWidgets('guarda la última respuesta antes de mostrar la revisión', (
+    tester,
+  ) async {
+    final repository = _SuccessAnswerRepository();
+
+    await buildScreen(tester, answerRepository: repository);
+
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(find.byKey(const Key('next-question-button')));
+      await tester.pumpAndSettle();
+    }
+
+    const sourceCode =
+        'print("México");\n'
+        '// Código para guardar';
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('programming-answer-4')),
+      sourceCode,
+    );
+
+    await tester.tap(find.byKey(const Key('review-answers-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.receivedQuestionId, 4);
+    expect(repository.receivedAnswer, sourceCode);
+
+    expect(find.text('Revisión del intento'), findsOneWidget);
+  });
+
   testWidgets('muestra el resumen de respuestas', (tester) async {
     await buildScreen(tester);
 
@@ -109,21 +287,10 @@ void main() {
       'Respuesta local.',
     );
 
-    // Pregunta 1 → 2
-    await tester.tap(find.byKey(const Key('next-question-button')));
-    await tester.pumpAndSettle();
-
-    // Pregunta 2 → 3
-    await tester.tap(find.byKey(const Key('next-question-button')));
-    await tester.pumpAndSettle();
-
-    // Pregunta 3 → 4
-    await tester.tap(find.byKey(const Key('next-question-button')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pregunta 4 de 4'), findsOneWidget);
-
-    expect(find.byKey(const Key('review-answers-button')), findsOneWidget);
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(find.byKey(const Key('next-question-button')));
+      await tester.pumpAndSettle();
+    }
 
     await tester.tap(find.byKey(const Key('review-answers-button')));
     await tester.pumpAndSettle();
@@ -138,21 +305,54 @@ void main() {
     expect(find.text('Preguntas pendientes'), findsOneWidget);
   });
 
+  testWidgets('restaura una respuesta de programación al reanudar', (
+    tester,
+  ) async {
+    const savedCode =
+        'print("México");\n'
+        '// Código guardado';
+
+    await buildScreen(
+      tester,
+      questionsRepository: _SuccessQuestionsRepository(
+        savedAnswers: const {4: savedCode},
+      ),
+    );
+
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(find.byKey(const Key('next-question-button')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('Pregunta 4 de 4'), findsOneWidget);
+
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey<String>('programming-answer-4')),
+    );
+
+    expect(field.controller?.text, savedCode);
+
+    expect(find.text('1/4 respondidas'), findsOneWidget);
+  });
+
   testWidgets('muestra un estado vacío', (tester) async {
     await buildScreen(
       tester,
-      repository: _SuccessRepository(questions: const []),
+      questionsRepository: _SuccessQuestionsRepository(questions: const []),
     );
 
     expect(find.text('Sin preguntas disponibles'), findsOneWidget);
   });
 
-  testWidgets('muestra el error y permite reintentar', (tester) async {
-    final repository = _FailureRepository();
+  testWidgets('muestra el error de consulta y permite reintentar', (
+    tester,
+  ) async {
+    final repository = _FailureQuestionsRepository();
 
-    await buildScreen(tester, repository: repository);
+    await buildScreen(tester, questionsRepository: repository);
 
     expect(find.text('No fue posible cargar las preguntas'), findsOneWidget);
+
     expect(find.byKey(const Key('retry-questions-button')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('retry-questions-button')));
@@ -168,7 +368,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Salir del examen'), findsOneWidget);
+
     expect(find.text('Continuar examen'), findsOneWidget);
+  });
+
+  testWidgets('advierte si existen respuestas sin guardar', (tester) async {
+    await buildScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('open-answer-1')),
+      'Respuesta pendiente.',
+    );
+
+    await tester.tap(find.byKey(const Key('attempt-exit-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Existen respuestas pendientes'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('funciona con el tema oscuro', (tester) async {
@@ -178,49 +396,20 @@ void main() {
 
     expect(Theme.of(context).brightness, Brightness.dark);
   });
+}
 
-  testWidgets('restaura una respuesta guardada al reanudar', (tester) async {
-    await buildScreen(
-      tester,
-      repository: _SuccessRepository(
-        savedAnswers: const {1: 'Respuesta guardada.'},
-      ),
-    );
-
-    expect(find.text('Respuesta guardada.'), findsOneWidget);
-
-    expect(find.text('1/4 respondidas'), findsOneWidget);
+class _ScreenDependencies {
+  const _ScreenDependencies({
+    required this.questionsController,
+    required this.saveAnswersController,
+    required this.questionsRepository,
+    required this.answerRepository,
   });
 
-  testWidgets('restaura una respuesta de programación al reanudar', (
-    tester,
-  ) async {
-    const savedCode =
-        'print("México");\n'
-        '// Código guardado';
-
-    await buildScreen(
-      tester,
-      repository: _SuccessRepository(savedAnswers: const {4: savedCode}),
-    );
-
-    for (var index = 0; index < 3; index++) {
-      await tester.tap(find.byKey(const Key('next-question-button')));
-      await tester.pumpAndSettle();
-    }
-
-    expect(find.text('Pregunta 4 de 4'), findsOneWidget);
-
-    expect(find.text('Pregunta de programación sintética.'), findsOneWidget);
-
-    final field = tester.widget<TextField>(
-      find.byKey(const ValueKey<String>('programming-answer-4')),
-    );
-
-    expect(field.controller?.text, savedCode);
-
-    expect(find.text('1/4 respondidas'), findsOneWidget);
-  });
+  final ExamQuestionsController questionsController;
+  final SaveAnswersController saveAnswersController;
+  final StudentExamQuestionsRepository questionsRepository;
+  final StudentAnswerRepository answerRepository;
 }
 
 const _exam = StudentExamSummary(
@@ -254,7 +443,10 @@ const List<StudentExamQuestion> _questions = [
     type: StudentQuestionType.multipleChoice,
     prompt: 'Pregunta de opción múltiple sintética.',
     timeSeconds: 90,
-    options: ['Primera opción', 'Segunda opción'],
+    options: [
+      StudentQuestionOption(value: 'A', label: 'Primera opción'),
+      StudentQuestionOption(value: 'B', label: 'Segunda opción'),
+    ],
   ),
   StudentExamQuestion(
     id: 3,
@@ -276,8 +468,8 @@ const List<StudentExamQuestion> _questions = [
   ),
 ];
 
-class _SuccessRepository implements StudentExamQuestionsRepository {
-  _SuccessRepository({
+class _SuccessQuestionsRepository implements StudentExamQuestionsRepository {
+  _SuccessQuestionsRepository({
     List<StudentExamQuestion>? questions,
     this.savedAnswers = const {},
   }) : questions = questions ?? _questions;
@@ -295,7 +487,7 @@ class _SuccessRepository implements StudentExamQuestionsRepository {
   }
 }
 
-class _FailureRepository implements StudentExamQuestionsRepository {
+class _FailureQuestionsRepository implements StudentExamQuestionsRepository {
   int callCount = 0;
 
   @override
@@ -306,6 +498,46 @@ class _FailureRepository implements StudentExamQuestionsRepository {
       type: ApiFailureType.requestFailed,
       statusCode: 422,
       message: 'No se pudieron cargar las preguntas.',
+    );
+  }
+}
+
+class _SuccessAnswerRepository implements StudentAnswerRepository {
+  int callCount = 0;
+  String? receivedToken;
+  int? receivedQuestionId;
+  String? receivedAnswer;
+
+  @override
+  Future<StudentSavedAnswer> save({
+    required String sessionToken,
+    required int questionId,
+    required String answer,
+  }) async {
+    callCount++;
+    receivedToken = sessionToken;
+    receivedQuestionId = questionId;
+    receivedAnswer = answer;
+
+    return StudentSavedAnswer(id: 1000 + questionId, questionId: questionId);
+  }
+}
+
+class _FailureAnswerRepository implements StudentAnswerRepository {
+  int callCount = 0;
+
+  @override
+  Future<StudentSavedAnswer> save({
+    required String sessionToken,
+    required int questionId,
+    required String answer,
+  }) {
+    callCount++;
+
+    throw const ApiException(
+      type: ApiFailureType.requestFailed,
+      statusCode: 422,
+      message: 'No fue posible guardar la respuesta.',
     );
   }
 }
