@@ -352,6 +352,34 @@ void main() {
 
       controller.dispose();
     });
+
+    test('calcula el progreso según respuestas completadas', () async {
+      final controller = _buildController(
+        repository: _SuccessQuestionsRepository(),
+      );
+
+      await controller.load(sessionToken: 'token-sintetico');
+
+      expect(controller.answeredProgress, 0);
+
+      controller.setAnswer(questionId: 1, answer: 'Primera respuesta.');
+
+      expect(controller.answeredProgress, closeTo(0.25, 0.001));
+
+      controller.setAnswer(questionId: 2, answer: 'B');
+
+      expect(controller.answeredProgress, closeTo(0.50, 0.001));
+
+      controller.setAnswer(questionId: 3, answer: '{"A":"B"}');
+
+      expect(controller.answeredProgress, closeTo(0.75, 0.001));
+
+      controller.setAnswer(questionId: 4, answer: 'print("Completado");');
+
+      expect(controller.answeredProgress, 1);
+
+      controller.dispose();
+    });
   });
 }
 

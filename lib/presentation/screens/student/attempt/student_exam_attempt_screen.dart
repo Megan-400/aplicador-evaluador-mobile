@@ -13,6 +13,7 @@ import 'widgets/multiple_choice_question.dart';
 import 'widgets/open_question_field.dart';
 import 'widgets/programming_question_field.dart';
 import '../../../state/answers/save_answers_controller.dart';
+import '../../../state/finish/finish_exam_attempt_controller.dart';
 
 /// Presenta las preguntas asociadas con un intento activo.
 /// Las respuestas se conservan únicamente en memoria. El guardado remoto
@@ -23,6 +24,7 @@ class StudentExamAttemptScreen extends StatefulWidget {
     required this.attempt,
     required this.questionsController,
     required this.saveAnswersController,
+    required this.finishAttemptController,
     super.key,
   });
 
@@ -30,6 +32,7 @@ class StudentExamAttemptScreen extends StatefulWidget {
   final StudentExamAttempt attempt;
   final ExamQuestionsController questionsController;
   final SaveAnswersController saveAnswersController;
+  final FinishExamAttemptController finishAttemptController;
 
   @override
   State<StudentExamAttemptScreen> createState() {
@@ -49,6 +52,8 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
     });
 
     widget.saveAnswersController.addListener(_handleControllerChange);
+
+    widget.finishAttemptController.addListener(_handleControllerChange);
   }
 
   @override
@@ -56,6 +61,8 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
     widget.questionsController.removeListener(_handleControllerChange);
 
     widget.saveAnswersController.removeListener(_handleControllerChange);
+
+    widget.finishAttemptController.removeListener(_handleControllerChange);
 
     super.dispose();
   }
@@ -173,6 +180,48 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
     return saved;
   }
 
+  Future<bool> _confirmFinish({required int unansweredCount}) async {
+    final message = unansweredCount > 0
+        ? 'Quedan $unansweredCount preguntas sin responder.\n\n'
+              'Si entregas ahora, esas preguntas quedarán sin '
+              'respuesta y no podrás regresar a modificarlas.'
+        : 'Todas las preguntas tienen una respuesta.\n\n'
+              'Después de entregar, no podrás modificar el examen.';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Entregar examen'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: widget.finishAttemptController.isLoading
+                  ? null
+                  : () {
+                      Navigator.of(dialogContext).pop(false);
+                    },
+              child: const Text('Continuar respondiendo'),
+            ),
+            ElevatedButton.icon(
+              key: const Key('confirm-finish-exam-button'),
+              onPressed: widget.finishAttemptController.isLoading
+                  ? null
+                  : () {
+                      Navigator.of(dialogContext).pop(true);
+                    },
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Entregar definitivamente'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed ?? false;
+  }
+
   Future<void> _goToNextQuestion() async {
     final saved = await _saveCurrentQuestion();
 
@@ -262,6 +311,32 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
                   child: const Text('Ir a la primera pendiente'),
                 ),
               const SizedBox(height: AppSpacing.sm),
+              ElevatedButton.icon(
+                key: const Key('finish-exam-button'),
+                onPressed:
+                    widget.finishAttemptController.isLoading ||
+                        widget.saveAnswersController.isSavingAny ||
+                        widget.saveAnswersController.hasPendingAnswers
+                    ? null
+                    : () {
+                        Navigator.of(bottomSheetContext).pop();
+
+                        _requestFinish();
+                      },
+                icon: widget.finishAttemptController.isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_outlined),
+                label: Text(
+                  widget.finishAttemptController.isLoading
+                      ? 'Entregando...'
+                      : 'Entregar examen',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(bottomSheetContext).pop();
@@ -274,6 +349,128 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
         );
       },
     );
+  }
+
+  Future<void> _requestFinish() async {
+    if (widget.finishAttemptController.isLoading ||
+        widget.saveAnswersController.isSavingAny) {
+      return;
+    }
+
+    final saved = await _saveCurrentQuestion();
+
+    if (!saved || !mounted) {
+      return;
+    }
+
+    if (widget.saveAnswersController.hasPendingAnswers ||
+        widget.saveAnswersController.hasFailedAnswers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Existen respuestas que todavía no se '
+            'han guardado correctamente.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final questionsController = widget.questionsController;
+
+    final unansweredCount =
+        questionsController.totalQuestions - questionsController.answeredCount;
+
+    final confirmed = await _confirmFinish(unansweredCount: unansweredCount);
+
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    final finished = await widget.finishAttemptController.finish(
+      sessionToken: widget.attempt.sessionToken,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!finished) {
+      final message =
+          widget.finishAttemptController.errorMessage ??
+          'No fue posible entregar el examen.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Reintentar',
+            onPressed: _requestFinish,
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final result = widget.finishAttemptController.finishedAttempt;
+
+    if (result == null) {
+      return;
+    }
+
+    await _showFinishConfirmation(submittedAt: result.submittedAt);
+  }
+
+  Future<void> _showFinishConfirmation({required DateTime submittedAt}) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          icon: const Icon(Icons.check_circle_outline, size: 48),
+          title: const Text('Examen entregado correctamente'),
+          content: Text(
+            'Fecha de entrega:\n'
+            '${_formatSubmittedAt(submittedAt)}\n\n'
+            'Tu resultado puede permanecer en revisión '
+            'hasta que el docente termine la calificación.',
+          ),
+          actions: [
+            ElevatedButton(
+              key: const Key('finish-exam-return-button'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Volver al portal'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    widget.questionsController.reset();
+    widget.saveAnswersController.reset();
+
+    Navigator.of(context).pop(true);
+  }
+
+  String _formatSubmittedAt(DateTime submittedAt) {
+    final local = submittedAt.toLocal();
+
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year.toString();
+
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+
+    return '$day/$month/$year $hour:$minute';
   }
 
   @override
@@ -291,7 +488,9 @@ class _StudentExamAttemptScreenState extends State<StudentExamAttemptScreen> {
         appBar: AppBar(
           leading: IconButton(
             key: const Key('attempt-exit-button'),
-            onPressed: _requestExit,
+            onPressed: widget.finishAttemptController.isLoading
+                ? null
+                : _requestExit,
             tooltip: 'Salir del examen',
             icon: const Icon(Icons.close),
           ),
@@ -398,7 +597,7 @@ class _AttemptProgressHeader extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           LinearProgressIndicator(
-            value: controller.progress,
+            value: controller.answeredProgress,
             minHeight: 8,
             borderRadius: BorderRadius.circular(AppRadii.circular),
           ),

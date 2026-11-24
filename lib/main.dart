@@ -19,6 +19,10 @@ import 'data/datasources/remote/answers/student_answer_remote_data_source.dart';
 import 'data/repositories/answers/student_answer_repository_impl.dart';
 import 'domain/usecases/answers/save_student_answer.dart';
 import 'presentation/state/answers/save_answers_controller.dart';
+import 'data/datasources/remote/finish/student_finish_attempt_remote_data_source.dart';
+import 'data/repositories/finish/student_finish_attempt_repository_impl.dart';
+import 'domain/usecases/finish/finish_student_exam_attempt.dart';
+import 'presentation/state/finish/finish_exam_attempt_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,6 +44,8 @@ class _MyAppState extends State<MyApp> {
   late final ExamQuestionsController _questionsController;
   late final StudentAnswerRemoteDataSource _answerRemoteDataSource;
   late final SaveAnswersController _saveAnswersController;
+  late final StudentFinishAttemptRemoteDataSource _finishRemoteDataSource;
+  late final FinishExamAttemptController _finishAttemptController;
 
   @override
   void initState() {
@@ -84,18 +90,30 @@ class _MyAppState extends State<MyApp> {
     _saveAnswersController = SaveAnswersController(
       saveAnswer: SaveStudentAnswer(repository: answerRepository),
     );
+
+    _finishRemoteDataSource = StudentFinishAttemptRemoteDataSource();
+
+    final finishRepository = StudentFinishAttemptRepositoryImpl(
+      remoteDataSource: _finishRemoteDataSource,
+    );
+
+    _finishAttemptController = FinishExamAttemptController(
+      finishAttempt: FinishStudentExamAttempt(repository: finishRepository),
+    );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    _remoteDataSource.close();
-    _startAttemptController.dispose();
-    _attemptRemoteDataSource.close();
-    _questionsController.dispose();
-    _questionsRemoteDataSource.close();
+    _finishAttemptController.dispose();
     _saveAnswersController.dispose();
+    _questionsController.dispose();
+    _startAttemptController.dispose();
+    _controller.dispose();
+    _finishRemoteDataSource.close();
     _answerRemoteDataSource.close();
+    _questionsRemoteDataSource.close();
+    _attemptRemoteDataSource.close();
+    _remoteDataSource.close();
     super.dispose();
   }
 
@@ -120,10 +138,14 @@ class _MyAppState extends State<MyApp> {
           return StudentAppShell(
             dashboard: dashboard,
             credentials: credentials,
-            saveAnswersController: _saveAnswersController,
             startAttemptController: _startAttemptController,
             questionsController: _questionsController,
+            saveAnswersController: _saveAnswersController,
+            finishAttemptController: _finishAttemptController,
+            onRefreshDashboard: _controller.refresh,
+            dashboardErrorMessage: () => _controller.errorMessage,
             onSignOut: () {
+              _finishAttemptController.reset();
               _saveAnswersController.reset();
               _questionsController.reset();
               _startAttemptController.reset();

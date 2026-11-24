@@ -13,6 +13,7 @@ import '../state/attempts/start_exam_attempt_controller.dart';
 import '../screens/student/attempt/student_exam_attempt_screen.dart';
 import '../state/questions/exam_questions_controller.dart';
 import '../state/answers/save_answers_controller.dart';
+import '../state/finish/finish_exam_attempt_controller.dart';
 
 /// Contenedor principal de navegación del portal móvil del alumno.
 /// `IndexedStack` conserva el estado básico de cada pantalla cuando el alumno
@@ -24,6 +25,9 @@ class StudentAppShell extends StatefulWidget {
     required this.startAttemptController,
     required this.questionsController,
     required this.saveAnswersController,
+    required this.finishAttemptController,
+    required this.onRefreshDashboard,
+    required this.dashboardErrorMessage,
     required this.onSignOut,
     super.key,
   });
@@ -33,6 +37,9 @@ class StudentAppShell extends StatefulWidget {
   final StartExamAttemptController startAttemptController;
   final ExamQuestionsController questionsController;
   final SaveAnswersController saveAnswersController;
+  final FinishExamAttemptController finishAttemptController;
+  final Future<bool> Function() onRefreshDashboard;
+  final String? Function() dashboardErrorMessage;
   final VoidCallback onSignOut;
 
   @override
@@ -188,23 +195,101 @@ class _StudentAppShellState extends State<StudentAppShell> {
               }
 
               widget.questionsController.reset();
+              widget.saveAnswersController.reset();
+              widget.finishAttemptController.reset();
 
-              await navigator.pushReplacement(
-                MaterialPageRoute<void>(
+              final delivered = await navigator.pushReplacement<bool, void>(
+                MaterialPageRoute<bool>(
                   builder: (context) {
                     return StudentExamAttemptScreen(
                       exam: exam,
                       attempt: attempt,
                       questionsController: widget.questionsController,
                       saveAnswersController: widget.saveAnswersController,
+                      finishAttemptController: widget.finishAttemptController,
                     );
                   },
                 ),
               );
+
+              if (delivered != true) {
+                return true;
+              }
+
+              widget.saveAnswersController.reset();
+              widget.questionsController.reset();
+              widget.startAttemptController.reset();
+
+              final refreshed = await widget.onRefreshDashboard();
+
+              if (!mounted) {
+                return true;
+              }
+
+              widget.finishAttemptController.reset();
+
+              if (refreshed) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'El examen fue entregado y el portal '
+                      'se actualizó.',
+                    ),
+                  ),
+                );
+
+                return true;
+              }
+
+              final refreshError = widget.dashboardErrorMessage();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    refreshError ??
+                        'El examen fue entregado, pero no fue '
+                            'posible actualizar el portal.',
+                  ),
+                  action: SnackBarAction(
+                    label: 'Actualizar',
+                    onPressed: () {
+                      _retryDashboardRefresh();
+                    },
+                  ),
+                ),
+              );
+
               return true;
             },
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _retryDashboardRefresh() async {
+    final refreshed = await widget.onRefreshDashboard();
+
+    if (!mounted) {
+      return;
+    }
+
+    final message = refreshed
+        ? 'El portal se actualizó correctamente.'
+        : widget.dashboardErrorMessage() ??
+              'No fue posible actualizar el portal.';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: refreshed
+            ? null
+            : SnackBarAction(
+                label: 'Reintentar',
+                onPressed: () {
+                  _retryDashboardRefresh();
+                },
+              ),
       ),
     );
   }

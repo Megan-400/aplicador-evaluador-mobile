@@ -51,8 +51,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('choice-2-1')));
 
-    expect(selectedAnswer, 'B');
-    expect(selectedAnswer, isNot('Segunda opción'));
+    expect(selectedAnswer, 'Segunda opción');
+    expect(selectedAnswer, isNot('B'));
   });
 
   testWidgets('restaura visualmente una respuesta recibida como clave', (
@@ -64,7 +64,7 @@ void main() {
           body: MultipleChoiceQuestion(
             questionId: 2,
             options: options,
-            selectedAnswer: 'B',
+            selectedAnswer: 'Segunda opción',
             onChanged: (_) {},
           ),
         ),
@@ -75,11 +75,14 @@ void main() {
       find.byType(RadioGroup<String>),
     );
 
-    expect(radioGroup.groupValue, 'B');
+    expect(radioGroup.groupValue, 'Segunda opción');
 
     final radios = tester.widgetList<Radio<String>>(find.byType(Radio<String>));
 
-    expect(radios.map((radio) => radio.value), ['A', 'B']);
+    expect(radios.map((radio) => radio.value), [
+      'Primera opción',
+      'Segunda opción',
+    ]);
   });
 
   testWidgets('no permite seleccionar cuando está deshabilitado', (
@@ -127,4 +130,29 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('muestra una respuesta antigua guardada como clave', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: MultipleChoiceQuestion(
+            questionId: 2,
+            options: options,
+            selectedAnswer: 'B',
+            onChanged: _ignoreAnswer,
+          ),
+        ),
+      ),
+    );
+
+    final radioGroup = tester.widget<RadioGroup<String>>(
+      find.byType(RadioGroup<String>),
+    );
+
+    expect(radioGroup.groupValue, 'Segunda opción');
+  });
 }
+
+void _ignoreAnswer(String value) {}

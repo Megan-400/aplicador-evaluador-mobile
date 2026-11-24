@@ -26,6 +26,9 @@ void main() {
           startAttemptController: buildTestStartAttemptController(),
           questionsController: buildTestQuestionsController(),
           saveAnswersController: buildTestSaveAnswersController(),
+          finishAttemptController: buildTestFinishAttemptController(),
+          onRefreshDashboard: () async => true,
+          dashboardErrorMessage: () => null,
           onSignOut: () {},
         ),
       ),
@@ -147,6 +150,9 @@ void main() {
           startAttemptController: buildTestStartAttemptController(),
           questionsController: buildTestQuestionsController(),
           saveAnswersController: buildTestSaveAnswersController(),
+          finishAttemptController: buildTestFinishAttemptController(),
+          onRefreshDashboard: () async => true,
+          dashboardErrorMessage: () => null,
           onSignOut: () {
             signedOut = true;
           },
