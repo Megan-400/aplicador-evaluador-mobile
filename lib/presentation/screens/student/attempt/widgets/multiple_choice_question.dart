@@ -5,9 +5,10 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../domain/entities/questions/student_question_option.dart';
 
 /// Opciones seleccionables de una pregunta de opción múltiple.
-///
-/// Presenta la etiqueta visible de cada opción y conserva su valor estable,
+/// [StudentQuestionOption.value] se utiliza como identificador visual,
 /// por ejemplo `A`, `B`, `C` o `D`.
+/// [StudentQuestionOption.label] es la respuesta completa que se muestra
+/// y se envía al backend.
 class MultipleChoiceQuestion extends StatelessWidget {
   const MultipleChoiceQuestion({
     required this.questionId,
@@ -21,10 +22,11 @@ class MultipleChoiceQuestion extends StatelessWidget {
   final int questionId;
   final List<StudentQuestionOption> options;
 
-  /// Valor seleccionado, por ejemplo `B`.
+  /// Texto completo de la respuesta seleccionada.
+  /// Ejemplo: `Herencia`.
   final String selectedAnswer;
 
-  /// Comunica el valor estable de la opción, no su etiqueta.
+  /// Comunica la etiqueta completa, no la clave visual.
   final ValueChanged<String> onChanged;
 
   final bool enabled;
@@ -52,17 +54,13 @@ class MultipleChoiceQuestion extends StatelessWidget {
       );
     }
 
-    final availableValues = options.map((option) => option.value).toSet();
-
-    final groupValue = availableValues.contains(selectedAnswer)
-        ? selectedAnswer
-        : null;
+    final selectedLabel = _selectedLabel();
 
     return RadioGroup<String>(
-      groupValue: groupValue,
-      onChanged: (value) {
-        if (enabled && value != null) {
-          onChanged(value);
+      groupValue: selectedLabel,
+      onChanged: (label) {
+        if (enabled && label != null) {
+          onChanged(label);
         }
       },
       child: Column(
@@ -73,10 +71,10 @@ class MultipleChoiceQuestion extends StatelessWidget {
               questionId: questionId,
               index: index,
               option: options[index],
-              selected: options[index].value == selectedAnswer,
+              selected: options[index].label == selectedLabel,
               enabled: enabled,
               onPressed: () {
-                onChanged(options[index].value);
+                onChanged(options[index].label);
               },
             ),
             if (index < options.length - 1)
@@ -85,6 +83,28 @@ class MultipleChoiceQuestion extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Obtiene la etiqueta que debe mostrarse como seleccionada.
+  /// La compatibilidad con [option.value] permite abrir intentos activos
+  /// que hayan guardado temporalmente `A`, `B`, `C` o `D` con una versión
+  /// anterior de la aplicación.
+  String? _selectedLabel() {
+    if (selectedAnswer.isEmpty) {
+      return null;
+    }
+
+    for (final option in options) {
+      if (option.label == selectedAnswer) {
+        return option.label;
+      }
+
+      if (option.value == selectedAnswer) {
+        return option.label;
+      }
+    }
+
+    return null;
   }
 }
 
@@ -135,7 +155,7 @@ class _ChoiceOption extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Radio<String>(value: option.value, enabled: enabled),
+              Radio<String>(value: option.label, enabled: enabled),
               const SizedBox(width: AppSpacing.xs),
               Container(
                 width: 32,

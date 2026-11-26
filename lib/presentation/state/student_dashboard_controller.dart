@@ -60,6 +60,56 @@ class StudentDashboardController extends ChangeNotifier {
     }
   }
 
+  /// Actualiza el dashboard con las credenciales de la sesión en memoria.
+  /// Devuelve `false` si la sesión no contiene credenciales o si la
+  /// actualización falla. Conserva el dashboard anterior cuando ocurre
+  /// un error para no expulsar al alumno del portal.
+  Future<bool> refresh() async {
+    final credentials = _credentials;
+
+    if (credentials == null || isLoading) {
+      return false;
+    }
+
+    _status = StudentDashboardStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final refreshedDashboard = await loadDashboard(
+        folio: credentials.folio,
+        accessCode: credentials.accessCode,
+      );
+
+      _dashboard = refreshedDashboard;
+      _status = StudentDashboardStatus.success;
+      _errorMessage = null;
+      notifyListeners();
+
+      return true;
+    } on ApiException catch (error) {
+      _status = StudentDashboardStatus.success;
+      _errorMessage = error.message;
+      notifyListeners();
+
+      return false;
+    } on FormatException catch (error) {
+      _status = StudentDashboardStatus.success;
+      _errorMessage = error.message;
+      notifyListeners();
+
+      return false;
+    } catch (_) {
+      _status = StudentDashboardStatus.success;
+      _errorMessage =
+          'El examen fue entregado, pero no fue posible '
+          'actualizar el portal.';
+      notifyListeners();
+
+      return false;
+    }
+  }
+
   void signOut() {
     _credentials = null;
     _dashboard = null;

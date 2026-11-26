@@ -87,6 +87,15 @@ class ExamQuestionsController extends ChangeNotifier {
     return 'Pregunta ${_currentIndex + 1} de ${_questions.length}';
   }
 
+  /// Proporción de preguntas que contienen una respuesta local.
+  double get answeredProgress {
+    if (_questions.isEmpty) {
+      return 0;
+    }
+
+    return answeredCount / _questions.length;
+  }
+
   /// Copia inmutable de las respuestas locales.
   Map<int, String> get localAnswers => Map.unmodifiable(_localAnswers);
 

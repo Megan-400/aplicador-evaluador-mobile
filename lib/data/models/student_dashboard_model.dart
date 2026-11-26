@@ -10,9 +10,18 @@ abstract final class StudentDashboardModel {
 
     return StudentDashboard(
       student: _student(data),
-      groups: _list(data['grupos']).map(_group).toList(),
-      exams: _list(data['examenes']).map(_exam).toList(),
-      grades: _list(data['entregas']).map(_grade).toList(),
+      groups: _list(
+        data['grupos'],
+        field: 'data.grupos',
+      ).map(_group).toList(growable: false),
+      exams: _list(
+        data['examenes'],
+        field: 'data.examenes',
+      ).map(_exam).toList(growable: false),
+      grades: _list(
+        data['entregas'],
+        field: 'data.entregas',
+      ).map(_grade).toList(growable: false),
     );
   }
 
@@ -60,12 +69,14 @@ abstract final class StudentDashboardModel {
   static StudentGradeSummary _grade(Map<String, dynamic> json) {
     final score = _nullableDouble(json['calificacion']);
 
+    final maximumScore = _nullableDouble(json['escala']) ?? 100;
+
     return StudentGradeSummary(
       id: _int(json['id']).toString(),
       examTitle: _string(json['nombre']),
       subject: _string(json['materia']),
       score: score ?? 0,
-      maximumScore: _double(json['escala']),
+      maximumScore: maximumScore,
       result: _gradeResult(_string(json['estado'])),
       publishedAt:
           _nullableDate(json['fecha_entrega']) ??
@@ -74,12 +85,20 @@ abstract final class StudentDashboardModel {
   }
 
   static StudentExamStatus _examStatus(String value) {
-    return switch (value.toLowerCase()) {
-      'disponible' => StudentExamStatus.available,
-      'proximamente' => StudentExamStatus.upcoming,
-      'completado' => StudentExamStatus.completed,
-      'cerrado' => StudentExamStatus.closed,
-      _ => throw const FormatException('Estado de examen desconocido.'),
+    final normalized = value.trim().toLowerCase().replaceAll(' ', '_');
+
+    return switch (normalized) {
+      'disponible' || 'en_progreso' => StudentExamStatus.available,
+
+      'proximamente' || 'próximamente' => StudentExamStatus.upcoming,
+
+      'completado' ||
+      'finalizado' ||
+      'entregado' => StudentExamStatus.completed,
+
+      'cerrado' || 'anulado' => StudentExamStatus.closed,
+
+      _ => throw FormatException('Estado de examen desconocido: $value'),
     };
   }
 
@@ -96,23 +115,36 @@ abstract final class StudentDashboardModel {
   }
 
   static Map<String, dynamic> _map(Object? value, {required String field}) {
-    if (value is! Map<String, dynamic>) {
+    if (value is! Map) {
       throw FormatException('El campo $field no tiene un formato válido.');
     }
 
-    return value;
+    return Map<String, dynamic>.from(value);
   }
 
-  static List<Map<String, dynamic>> _list(Object? value) {
+  static List<Map<String, dynamic>> _list(
+    Object? value, {
+    required String field,
+  }) {
     if (value == null) {
       return const [];
     }
 
     if (value is! List) {
-      throw const FormatException('La colección no tiene un formato válido.');
+      throw FormatException('El campo $field no contiene una lista válida.');
     }
 
-    return value.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    return value
+        .map((item) {
+          if (item is! Map) {
+            throw FormatException(
+              'Un elemento de $field no tiene un formato válido.',
+            );
+          }
+
+          return Map<String, dynamic>.from(item);
+        })
+        .toList(growable: false);
   }
 
   static String _string(Object? value) {
@@ -136,20 +168,22 @@ abstract final class StudentDashboardModel {
     return int.parse(value.toString());
   }
 
-  static double _double(Object? value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-
-    return double.parse(value.toString());
-  }
-
   static double? _nullableDouble(Object? value) {
     if (value == null) {
       return null;
     }
 
-    return _double(value);
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    final normalized = value.toString().trim();
+
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return double.tryParse(normalized);
   }
 
   static bool _bool(Object? value) {

@@ -140,6 +140,62 @@ void main() {
 
       controller.dispose();
     });
+
+    test('actualiza el dashboard usando la sesión en memoria', () async {
+      final initialDashboard = _dashboard;
+
+      const refreshedDashboard = StudentDashboard(
+        student: StudentProfile(
+          id: 14,
+          name: 'Alumno actualizado',
+          selectedGroupId: 8,
+        ),
+        groups: [],
+        exams: [],
+        grades: [],
+      );
+
+      final repository = _SequentialStudentDashboardRepository(
+        dashboards: [initialDashboard, refreshedDashboard],
+      );
+
+      final controller = _buildController(repository: repository);
+
+      await controller.signIn(folio: 'FOLIO123', accessCode: 'ABCD27');
+
+      expect(controller.dashboard?.student.name, 'Alumno de prueba');
+
+      final refreshed = await controller.refresh();
+
+      expect(refreshed, isTrue);
+      expect(controller.dashboard?.student.name, 'Alumno actualizado');
+      expect(repository.callCount, 2);
+      expect(repository.receivedFolio, 'FOLIO123');
+      expect(repository.receivedAccessCode, 'ABCD27');
+
+      controller.dispose();
+    });
+
+    test('conserva el dashboard cuando falla la actualización', () async {
+      final repository = _SuccessThenFailureDashboardRepository(
+        dashboard: _dashboard,
+      );
+
+      final controller = _buildController(repository: repository);
+
+      await controller.signIn(folio: 'FOLIO123', accessCode: 'ABCD27');
+
+      final dashboardBeforeRefresh = controller.dashboard;
+
+      final refreshed = await controller.refresh();
+
+      expect(refreshed, isFalse);
+      expect(controller.dashboard, same(dashboardBeforeRefresh));
+      expect(controller.status, StudentDashboardStatus.success);
+      expect(controller.errorMessage, 'No fue posible actualizar el portal.');
+
+      controller.dispose();
+    });
   });
 }
 
@@ -212,5 +268,59 @@ class _PendingStudentDashboardRepository implements StudentDashboardRepository {
 
   void complete(StudentDashboard dashboard) {
     _completer.complete(dashboard);
+  }
+}
+
+class _SequentialStudentDashboardRepository
+    implements StudentDashboardRepository {
+  _SequentialStudentDashboardRepository({required this.dashboards});
+
+  final List<StudentDashboard> dashboards;
+
+  int callCount = 0;
+  String? receivedFolio;
+  String? receivedAccessCode;
+
+  @override
+  Future<StudentDashboard> load({
+    required String folio,
+    required String accessCode,
+  }) async {
+    receivedFolio = folio;
+    receivedAccessCode = accessCode;
+
+    final index = callCount;
+    callCount++;
+
+    if (index >= dashboards.length) {
+      return dashboards.last;
+    }
+
+    return dashboards[index];
+  }
+}
+
+class _SuccessThenFailureDashboardRepository
+    implements StudentDashboardRepository {
+  _SuccessThenFailureDashboardRepository({required this.dashboard});
+
+  final StudentDashboard dashboard;
+  int callCount = 0;
+
+  @override
+  Future<StudentDashboard> load({
+    required String folio,
+    required String accessCode,
+  }) async {
+    callCount++;
+
+    if (callCount == 1) {
+      return dashboard;
+    }
+
+    throw const ApiException(
+      type: ApiFailureType.connection,
+      message: 'No fue posible actualizar el portal.',
+    );
   }
 }

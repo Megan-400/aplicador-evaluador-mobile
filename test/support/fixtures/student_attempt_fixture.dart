@@ -12,6 +12,10 @@ import 'package:aplicador_evaluador_mobile/domain/entities/answers/student_saved
 import 'package:aplicador_evaluador_mobile/domain/repositories/answers/student_answer_repository.dart';
 import 'package:aplicador_evaluador_mobile/domain/usecases/answers/save_student_answer.dart';
 import 'package:aplicador_evaluador_mobile/presentation/state/answers/save_answers_controller.dart';
+import 'package:aplicador_evaluador_mobile/domain/entities/finish/student_finished_attempt.dart';
+import 'package:aplicador_evaluador_mobile/domain/repositories/finish/student_finish_attempt_repository.dart';
+import 'package:aplicador_evaluador_mobile/domain/usecases/finish/finish_student_exam_attempt.dart';
+import 'package:aplicador_evaluador_mobile/presentation/state/finish/finish_exam_attempt_controller.dart';
 
 const testStudentCredentials = StudentSessionCredentials(
   folio: 'FOLIO123',
@@ -71,5 +75,24 @@ class _TestAnswerRepository implements StudentAnswerRepository {
     required String answer,
   }) async {
     return StudentSavedAnswer(id: 1000 + questionId, questionId: questionId);
+  }
+}
+
+FinishExamAttemptController buildTestFinishAttemptController() {
+  return FinishExamAttemptController(
+    finishAttempt: FinishStudentExamAttempt(
+      repository: _TestFinishRepository(),
+    ),
+  );
+}
+
+class _TestFinishRepository implements StudentFinishAttemptRepository {
+  @override
+  Future<StudentFinishedAttempt> finish({required String sessionToken}) async {
+    return StudentFinishedAttempt(
+      id: 123,
+      status: 'finalizado',
+      submittedAt: DateTime.parse('2026-11-23T18:30:00-06:00'),
+    );
   }
 }
