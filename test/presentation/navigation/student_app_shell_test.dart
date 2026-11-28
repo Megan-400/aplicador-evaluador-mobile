@@ -13,7 +13,19 @@ void main() {
   }) async {
     final startAttemptController = buildTestStartAttemptController();
 
+    final questionsController = buildTestQuestionsController();
+
+    final saveAnswersController = buildTestSaveAnswersController();
+
+    final finishAttemptController = buildTestFinishAttemptController();
+
     addTearDown(startAttemptController.dispose);
+
+    addTearDown(questionsController.dispose);
+
+    addTearDown(saveAnswersController.dispose);
+
+    addTearDown(finishAttemptController.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -23,10 +35,10 @@ void main() {
         home: StudentAppShell(
           dashboard: emptyStudentDashboard,
           credentials: testStudentCredentials,
-          startAttemptController: buildTestStartAttemptController(),
-          questionsController: buildTestQuestionsController(),
-          saveAnswersController: buildTestSaveAnswersController(),
-          finishAttemptController: buildTestFinishAttemptController(),
+          startAttemptController: startAttemptController,
+          questionsController: questionsController,
+          saveAnswersController: saveAnswersController,
+          finishAttemptController: finishAttemptController,
           onRefreshDashboard: () async => true,
           dashboardErrorMessage: () => null,
           onSignOut: () {},
@@ -101,18 +113,17 @@ void main() {
     expect(find.text('Sin grupos asociados'), findsOneWidget);
   });
 
-  testWidgets('abre Exámenes desde el acceso rápido de Inicio', (tester) async {
+  testWidgets('abre Exámenes desde la estadística Por realizar', (
+    tester,
+  ) async {
     await buildShell(tester);
 
-    final quickAccessText = find.text('Exámenes').first;
-    final quickAccessCard = find.ancestor(
-      of: quickAccessText,
-      matching: find.byType(InkWell),
-    );
+    final pendingStatistic = find.byKey(const Key('pending-exams-statistic'));
 
-    expect(quickAccessCard, findsOneWidget);
+    expect(pendingStatistic, findsOneWidget);
 
-    await tester.tap(quickAccessCard);
+    await tester.tap(pendingStatistic);
+
     await tester.pumpAndSettle();
 
     final navigationBar = tester.widget<NavigationBar>(
@@ -120,7 +131,44 @@ void main() {
     );
 
     expect(navigationBar.selectedIndex, 1);
+
     expect(find.text('Sin exámenes disponibles'), findsOneWidget);
+  });
+
+  testWidgets('abre Calificaciones desde la estadística Entregados', (
+    tester,
+  ) async {
+    await buildShell(tester);
+
+    await tester.tap(find.byKey(const Key('completed-exams-statistic')));
+
+    await tester.pumpAndSettle();
+
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
+    );
+
+    expect(navigationBar.selectedIndex, 2);
+
+    expect(find.text('Sin calificaciones disponibles'), findsOneWidget);
+  });
+
+  testWidgets('abre Mis grupos desde la estadística correspondiente', (
+    tester,
+  ) async {
+    await buildShell(tester);
+
+    await tester.tap(find.byKey(const Key('registered-groups-statistic')));
+
+    await tester.pumpAndSettle();
+
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
+    );
+
+    expect(navigationBar.selectedIndex, 3);
+
+    expect(find.text('Sin grupos asociados'), findsOneWidget);
   });
 
   testWidgets('funciona con el tema oscuro', (tester) async {

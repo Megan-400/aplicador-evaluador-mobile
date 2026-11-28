@@ -23,6 +23,10 @@ import 'data/datasources/remote/finish/student_finish_attempt_remote_data_source
 import 'data/repositories/finish/student_finish_attempt_repository_impl.dart';
 import 'domain/usecases/finish/finish_student_exam_attempt.dart';
 import 'presentation/state/finish/finish_exam_attempt_controller.dart';
+import 'data/datasources/remote/enrollment/student_enrollment_remote_data_source.dart';
+import 'data/repositories/enrollment/student_enrollment_repository_impl.dart';
+import 'domain/usecases/enrollment/create_student_enrollment.dart';
+import 'presentation/state/enrollment/student_enrollment_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +50,8 @@ class _MyAppState extends State<MyApp> {
   late final SaveAnswersController _saveAnswersController;
   late final StudentFinishAttemptRemoteDataSource _finishRemoteDataSource;
   late final FinishExamAttemptController _finishAttemptController;
+  late final StudentEnrollmentRemoteDataSource _enrollmentRemoteDataSource;
+  late final StudentEnrollmentController _enrollmentController;
 
   @override
   void initState() {
@@ -100,15 +106,29 @@ class _MyAppState extends State<MyApp> {
     _finishAttemptController = FinishExamAttemptController(
       finishAttempt: FinishStudentExamAttempt(repository: finishRepository),
     );
+
+    _enrollmentRemoteDataSource = StudentEnrollmentRemoteDataSource();
+
+    final enrollmentRepository = StudentEnrollmentRepositoryImpl(
+      remoteDataSource: _enrollmentRemoteDataSource,
+    );
+
+    _enrollmentController = StudentEnrollmentController(
+      createEnrollment: CreateStudentEnrollment(
+        repository: enrollmentRepository,
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _enrollmentController.dispose();
     _finishAttemptController.dispose();
     _saveAnswersController.dispose();
     _questionsController.dispose();
     _startAttemptController.dispose();
     _controller.dispose();
+    _enrollmentRemoteDataSource.close();
     _finishRemoteDataSource.close();
     _answerRemoteDataSource.close();
     _questionsRemoteDataSource.close();
@@ -132,7 +152,10 @@ class _MyAppState extends State<MyApp> {
           final credentials = _controller.credentials;
 
           if (dashboard == null || credentials == null) {
-            return StudentAccessScreen(controller: _controller);
+            return StudentAccessScreen(
+              controller: _controller,
+              enrollmentController: _enrollmentController,
+            );
           }
 
           return StudentAppShell(
@@ -145,6 +168,7 @@ class _MyAppState extends State<MyApp> {
             onRefreshDashboard: _controller.refresh,
             dashboardErrorMessage: () => _controller.errorMessage,
             onSignOut: () {
+              _enrollmentController.reset();
               _finishAttemptController.reset();
               _saveAnswersController.reset();
               _questionsController.reset();

@@ -4,26 +4,35 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../state/enrollment/student_enrollment_controller.dart';
 import '../../../state/student_dashboard_controller.dart';
+import '../enrollment/student_enrollment_screen.dart';
 import 'student_access_code.dart';
 
 /// Pantalla de identificación inicial del alumno.
-///
-/// El acceso se divide visualmente en dos pasos:
+/// El acceso se divide en dos pasos:
 /// 1. Identificación del grupo.
-/// 2. Captura del código personal.
-///
-/// Ambas credenciales se envían juntas únicamente al solicitar el dashboard.
+/// 2. Selección entre crear un perfil o ingresar con código.
+
+/// El folio, el código personal y la inscripción permanecen únicamente
+/// en memoria durante la sesión.
 class StudentAccessScreen extends StatefulWidget {
-  const StudentAccessScreen({required this.controller, super.key});
+  const StudentAccessScreen({
+    required this.controller,
+    required this.enrollmentController,
+    super.key,
+  });
 
   final StudentDashboardController controller;
+  final StudentEnrollmentController enrollmentController;
 
   @override
   State<StudentAccessScreen> createState() {
     return _StudentAccessScreenState();
   }
 }
+
+enum StudentAccessMode { firstTime, existingStudent }
 
 class _StudentAccessScreenState extends State<StudentAccessScreen> {
   final GlobalKey<FormState> _folioFormKey = GlobalKey<FormState>();
@@ -34,6 +43,8 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
 
   final TextEditingController _accessCodeController = TextEditingController();
 
+  StudentAccessMode _accessMode = StudentAccessMode.existingStudent;
+
   int _currentStep = 0;
   bool _isFolioValid = false;
   bool _isAccessCodeValid = false;
@@ -42,14 +53,17 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
   @override
   void initState() {
     super.initState();
+
     widget.controller.addListener(_handleControllerChange);
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_handleControllerChange);
+
     _folioController.dispose();
     _accessCodeController.dispose();
+
     super.dispose();
   }
 
@@ -100,32 +114,46 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
   void _continueToAccess() {
     FocusScope.of(context).unfocus();
 
-    if (!_isFolioValid || !(_folioFormKey.currentState?.validate() ?? false)) {
+    final formIsValid = _folioFormKey.currentState?.validate() ?? false;
+
+    if (!_isFolioValid || !formIsValid) {
       return;
     }
 
+    widget.enrollmentController.reset();
+
     setState(() {
       _currentStep = 1;
+      _accessMode = StudentAccessMode.existingStudent;
+      _accessCodeController.clear();
+      _isAccessCodeValid = false;
+      _obscureAccessCode = true;
     });
   }
 
   void _returnToGroup() {
     FocusScope.of(context).unfocus();
 
+    widget.enrollmentController.reset();
+
     setState(() {
       _currentStep = 0;
+      _accessMode = StudentAccessMode.existingStudent;
       _accessCodeController.clear();
       _isAccessCodeValid = false;
+      _obscureAccessCode = true;
     });
   }
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
 
+    final formIsValid = _accessFormKey.currentState?.validate() ?? false;
+
     if (widget.controller.isLoading ||
         !_isFolioValid ||
         !_isAccessCodeValid ||
-        !(_accessFormKey.currentState?.validate() ?? false)) {
+        !formIsValid) {
       return;
     }
 
@@ -142,19 +170,69 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
       });
     }
 
-    if (!success) {
+    if (!success || !mounted) {
+      return;
+    }
+  }
+
+  Future<void> _openEnrollment() async {
+    final groupFolio = StudentAccessCode.normalize(_folioController.text);
+
+    if (!_isFolioValid || groupFolio.isEmpty) {
       return;
     }
 
-    if (!mounted || !success) {
+    widget.enrollmentController.reset();
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (enrollmentContext) {
+          return StudentEnrollmentScreen(
+            groupFolio: groupFolio,
+            controller: widget.enrollmentController,
+            onContinue:
+                ({
+                  required String groupFolio,
+                  required String accessCode,
+                }) async {
+                  final signedIn = await widget.controller.signIn(
+                    folio: groupFolio,
+                    accessCode: accessCode,
+                  );
+
+                  if (!signedIn || !enrollmentContext.mounted) {
+                    return;
+                  }
+
+                  Navigator.of(enrollmentContext).pop();
+                },
+          );
+        },
+      ),
+    );
+  }
+
+  void _changeAccessMode(Set<StudentAccessMode> selection) {
+    if (selection.isEmpty || widget.controller.isLoading) {
       return;
     }
 
-    final dashboard = widget.controller.dashboard;
+    final nextMode = selection.first;
 
-    if (dashboard == null) {
+    if (nextMode == _accessMode) {
       return;
     }
+
+    FocusScope.of(context).unfocus();
+
+    widget.enrollmentController.reset();
+
+    setState(() {
+      _accessMode = nextMode;
+      _accessCodeController.clear();
+      _isAccessCodeValid = false;
+      _obscureAccessCode = true;
+    });
   }
 
   @override
@@ -268,7 +346,9 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
               hintText: 'Ejemplo: BBB2026',
               prefixIcon: Icon(Icons.tag),
               counterText: '',
-              helperText: 'Tu docente te compartirá el folio de tu grupo.',
+              helperText:
+                  'Tu docente te compartirá el folio '
+                  'de tu grupo.',
             ),
             validator: StudentAccessCode.validateFolio,
             onChanged: _normalizeFolio,
@@ -299,7 +379,6 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
   Widget _buildAccessStep() {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final isLoading = widget.controller.isLoading;
 
     return Form(
       key: _accessFormKey,
@@ -316,131 +395,227 @@ class _StudentAccessScreenState extends State<StudentAccessScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Usa tu código para consultar tu perfil y tus resultados.',
+            _accessMode == StudentAccessMode.firstTime
+                ? 'Crea tu perfil para ingresar '
+                      'por primera vez.'
+                : 'Usa tu código para consultar '
+                      'tu perfil y tus resultados.',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colors.primaryContainer,
-              borderRadius: BorderRadius.circular(AppRadii.control),
-              border: Border.all(color: colors.primary.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.assignment_outlined, color: colors.primary),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'FOLIO DEL GRUPO',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        _folioController.text,
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        'Formato del grupo verificado.',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.check_circle, color: colors.primary),
-              ],
-            ),
-          ),
+          _buildValidatedFolioCard(theme: theme, colors: colors),
           const SizedBox(height: AppSpacing.lg),
-          TextFormField(
-            key: const Key('student-access-code-field'),
-            controller: _accessCodeController,
-            enabled: !isLoading,
-            obscureText: _obscureAccessCode,
-            textCapitalization: TextCapitalization.characters,
-            textInputAction: TextInputAction.done,
-            maxLength: 6,
-            autocorrect: false,
-            enableSuggestions: false,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Código de acceso',
-              hintText: 'Ejemplo: ABCD27',
-              prefixIcon: const Icon(Icons.lock_outline),
-              counterText: '',
-              helperText:
-                  'Escribe las cuatro letras y dos números de tu código.',
-              suffixIcon: IconButton(
-                onPressed: isLoading
-                    ? null
-                    : () {
-                        setState(() {
-                          _obscureAccessCode = !_obscureAccessCode;
-                        });
-                      },
-                tooltip: _obscureAccessCode
-                    ? 'Mostrar código'
-                    : 'Ocultar código',
-                icon: Icon(
-                  _obscureAccessCode
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-              ),
-            ),
-            validator: StudentAccessCode.validateAccessCode,
-            onChanged: _normalizeAccessCode,
-            onFieldSubmitted: (_) {
-              if (_isAccessCodeValid && !isLoading) {
-                _submit();
-              }
-            },
-          ),
-          if (widget.controller.errorMessage != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            _AccessErrorMessage(message: widget.controller.errorMessage!),
-          ],
+          _buildAccessModeSelector(),
           const SizedBox(height: AppSpacing.lg),
-          ElevatedButton(
-            key: const Key('student-access-button'),
-            onPressed: isLoading || !_isAccessCodeValid ? null : _submit,
-            child: isLoading
-                ? const SizedBox(
-                    width: AppDimensions.iconMedium,
-                    height: AppDimensions.iconMedium,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Ingresar al portal'),
-                      SizedBox(width: AppSpacing.xs),
-                      Icon(Icons.arrow_forward),
-                    ],
-                  ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _accessMode == StudentAccessMode.firstTime
+                ? _buildFirstTimeAccess()
+                : _buildExistingStudentAccess(),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton.icon(
-            onPressed: isLoading ? null : _returnToGroup,
+            key: const Key('return-to-group-button'),
+            onPressed: widget.controller.isLoading ? null : _returnToGroup,
             icon: const Icon(Icons.arrow_back),
-            label: const Text('Volver'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Tu código es personal y no se almacena en el dispositivo.',
-            style: theme.textTheme.bodySmall,
-            textAlign: TextAlign.center,
+            label: const Text('Cambiar grupo'),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildValidatedFolioCard({
+    required ThemeData theme,
+    required ColorScheme colors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadii.control),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.assignment_outlined, color: colors.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('FOLIO DEL GRUPO', style: theme.textTheme.labelSmall),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(_folioController.text, style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Formato del grupo verificado.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.check_circle, color: colors.primary),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccessModeSelector() {
+    return SegmentedButton<StudentAccessMode>(
+      key: const Key('student-access-mode-selector'),
+      segments: const [
+        ButtonSegment<StudentAccessMode>(
+          value: StudentAccessMode.firstTime,
+          icon: Icon(Icons.person_add_outlined),
+          label: Text('Primera vez'),
+        ),
+        ButtonSegment<StudentAccessMode>(
+          value: StudentAccessMode.existingStudent,
+          icon: Icon(Icons.key_outlined),
+          label: Text('Ya tengo código'),
+        ),
+      ],
+      selected: {_accessMode},
+      onSelectionChanged: widget.controller.isLoading
+          ? null
+          : _changeAccessMode,
+    );
+  }
+
+  Widget _buildFirstTimeAccess() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Column(
+      key: const ValueKey<String>('first-time-access'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, color: colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Crea tu perfil y recibe un '
+                  'código personal. Deberás guardar '
+                  'ese código para ingresar nuevamente.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        ElevatedButton.icon(
+          key: const Key('open-student-enrollment-button'),
+          onPressed: _openEnrollment,
+          icon: const Icon(Icons.person_add_outlined),
+          label: const Text('Crear perfil'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Tu código será generado por el sistema '
+          'cuando la inscripción sea confirmada.',
+          style: theme.textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExistingStudentAccess() {
+    final theme = Theme.of(context);
+    final isLoading = widget.controller.isLoading;
+
+    return Column(
+      key: const ValueKey<String>('existing-student-access'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextFormField(
+          key: const Key('student-access-code-field'),
+          controller: _accessCodeController,
+          enabled: !isLoading,
+          obscureText: _obscureAccessCode,
+          textCapitalization: TextCapitalization.characters,
+          textInputAction: TextInputAction.done,
+          maxLength: 6,
+          autocorrect: false,
+          enableSuggestions: false,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Código de acceso',
+            hintText: 'Ejemplo: ABCD27',
+            prefixIcon: const Icon(Icons.lock_outline),
+            counterText: '',
+            helperText:
+                'Escribe las cuatro letras y '
+                'dos números de tu código.',
+            suffixIcon: IconButton(
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      setState(() {
+                        _obscureAccessCode = !_obscureAccessCode;
+                      });
+                    },
+              tooltip: _obscureAccessCode ? 'Mostrar código' : 'Ocultar código',
+              icon: Icon(
+                _obscureAccessCode
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+            ),
+          ),
+          validator: StudentAccessCode.validateAccessCode,
+          onChanged: _normalizeAccessCode,
+          onFieldSubmitted: (_) {
+            if (_isAccessCodeValid && !isLoading) {
+              _submit();
+            }
+          },
+        ),
+        if (widget.controller.errorMessage != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          _AccessErrorMessage(message: widget.controller.errorMessage!),
+        ],
+        const SizedBox(height: AppSpacing.lg),
+        ElevatedButton(
+          key: const Key('student-access-button'),
+          onPressed: isLoading || !_isAccessCodeValid ? null : _submit,
+          child: isLoading
+              ? const SizedBox(
+                  width: AppDimensions.iconMedium,
+                  height: AppDimensions.iconMedium,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Ingresar al portal'),
+                    SizedBox(width: AppSpacing.xs),
+                    Icon(Icons.arrow_forward),
+                  ],
+                ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Tu código es personal y no se '
+          'almacena en el dispositivo.',
+          style: theme.textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

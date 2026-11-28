@@ -115,13 +115,31 @@ class _StudentAppShellState extends State<StudentAppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final pendingExamCount = widget.dashboard.exams.where((exam) {
+      return exam.status == StudentExamStatus.available ||
+          exam.status == StudentExamStatus.upcoming;
+    }).length;
+
+    final completedExamCount = widget.dashboard.grades.length;
+
+    final registeredGroupCount = widget.dashboard.groups.length;
+
     final destinations = [
       StudentHomeScreen(
-        onOpenExams: () => _selectDestination(1),
-        onOpenGrades: () => _selectDestination(2),
-        onOpenGroups: () => _selectDestination(3),
-        onOpenProfile: _openProfile,
         studentName: widget.dashboard.student.name,
+        pendingExamCount: pendingExamCount,
+        completedExamCount: completedExamCount,
+        registeredGroupCount: registeredGroupCount,
+        onOpenExams: () {
+          _selectDestination(1);
+        },
+        onOpenGrades: () {
+          _selectDestination(2);
+        },
+        onOpenGroups: () {
+          _selectDestination(3);
+        },
+        onOpenProfile: _openProfile,
       ),
       StudentExamsScreen(
         exams: widget.dashboard.exams,
